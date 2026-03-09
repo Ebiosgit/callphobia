@@ -11,6 +11,22 @@ app.use(express.json());
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// 진단용 헬스체크
+app.get("/api/health", async (req, res) => {
+  const keyExists = !!process.env.ANTHROPIC_API_KEY;
+  const keyPrefix = process.env.ANTHROPIC_API_KEY?.slice(0, 16) || "없음";
+  try {
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 10,
+      messages: [{ role: "user", content: "hi" }],
+    });
+    res.json({ status: "ok", keyExists, keyPrefix, aiTest: "성공", reply: msg.content[0]?.text });
+  } catch (e) {
+    res.json({ status: "error", keyExists, keyPrefix, aiTest: "실패", error: e.message });
+  }
+});
+
 // 레벨별 음성 설정 (rate: 숫자, pitch: Hz 문자열)
 const VOICE_MAP = {
   "황금치킨 직원": { voice: "ko-KR-SunHiNeural",  rate: 1.05, pitch: "+5Hz"  },
