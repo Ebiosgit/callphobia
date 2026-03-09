@@ -309,6 +309,7 @@ export default function VoiceCallTrainer({ onBack }) {
   const [customRole, setCustomRole] = useState("");
   const [customScenario, setCustomScenario] = useState("");
   const [customDifficulty, setCustomDifficulty] = useState(2);
+  const [customDirection, setCustomDirection] = useState("calling"); // "calling" | "receiving"
   const [messages, setMessages] = useState([]);
   const [callDuration, setCallDuration] = useState(0);
   const [feedback, setFeedback] = useState(null);
@@ -602,6 +603,7 @@ export default function VoiceCallTrainer({ onBack }) {
 
   const startCustomCall = () => {
     if (!customTitle.trim() || !customRole.trim() || !customScenario.trim()) return;
+    const isCalling = customDirection === "calling";
     const customLevel = {
       id: "custom",
       emoji: "✏️",
@@ -614,11 +616,19 @@ export default function VoiceCallTrainer({ onBack }) {
       tip: "직접 만든 상황으로 연습해보세요",
       role: customRole.trim(),
       scenario: customScenario.trim(),
-      systemPrompt: `당신은 ${customRole.trim()}입니다.
+      systemPrompt: isCalling
+        ? `당신은 ${customRole.trim()}입니다. 상대방(사용자)이 지금 당신에게 전화를 걸었습니다.
 규칙:
 - 반드시 한국어로만 짧게(1-3문장) 답변
 - 실제 통화처럼 자연스럽게 응대
-- 처음엔 전화를 받는 사람처럼 자연스럽게 인사
+- 처음엔 전화를 받은 사람처럼 자연스럽게 인사 (예: "여보세요?", "안녕하세요, ${customRole.trim()}입니다")
+- 상황: ${customScenario.trim()}
+- 절대 대본/AI 언급 금지`
+        : `당신은 ${customRole.trim()}입니다. 당신이 먼저 상대방(사용자)에게 전화를 건 상황입니다.
+규칙:
+- 반드시 한국어로만 짧게(1-3문장) 답변
+- 실제 통화처럼 자연스럽게 응대
+- 처음엔 전화를 건 사람처럼 자신을 소개하고 용건을 말함 (예: "안녕하세요, 저는 ${customRole.trim()}인데요, ~때문에 연락드렸습니다")
 - 상황: ${customScenario.trim()}
 - 절대 대본/AI 언급 금지`,
     };
@@ -761,6 +771,28 @@ export default function VoiceCallTrainer({ onBack }) {
                       onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.1)"}
                     />
                     <div style={{ textAlign: "right", fontSize: "11px", color: "#475569", marginTop: "4px" }}>{customScenario.length}/100</div>
+                  </div>
+
+                  {/* 통화 방향 */}
+                  <div>
+                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>나의 입장</label>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {[
+                        { v: "calling", emoji: "📞", label: "전화 거는 입장", desc: "내가 먼저 전화함" },
+                        { v: "receiving", emoji: "📲", label: "전화 받는 입장", desc: "상대방이 먼저 전화함" },
+                      ].map(({ v, emoji, label, desc }) => (
+                        <button key={v} onClick={() => setCustomDirection(v)}
+                          style={{ flex: 1, padding: "10px 8px", borderRadius: "12px", border: "1px solid", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease", textAlign: "center",
+                            borderColor: customDirection === v ? "#F472B6" : "rgba(255,255,255,.1)",
+                            background: customDirection === v ? "rgba(244,114,182,.2)" : "rgba(255,255,255,.04)",
+                          }}
+                        >
+                          <div style={{ fontSize: "18px", marginBottom: "4px" }}>{emoji}</div>
+                          <div style={{ fontSize: "11px", fontWeight: "700", color: customDirection === v ? "#F472B6" : "#94A3B8" }}>{label}</div>
+                          <div style={{ fontSize: "10px", color: customDirection === v ? "#F472B6" : "#475569", marginTop: "2px", opacity: 0.8 }}>{desc}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* 난이도 */}
