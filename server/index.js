@@ -147,20 +147,20 @@ app.post("/api/script", async (req, res) => {
 // 여성: Rachel(21m00Tcm4TlvDq8ikWAM), Elli(MF3mGyEYCl7XYWbV9V6O)
 // 남성: Adam(pNInz6obpgDQGcFmaJgB), Arnold(VR6AewLTigWG4xSOukaG)
 const VOICE_MAP = {
-  "황금치킨 직원":   "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 따뜻
-  "헤어샵 직원":     "MF3mGyEYCl7XYWbV9V6O", // Elli - 여성, 친근
-  "레스토랑 직원":   "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
-  "연세내과 접수":   "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 차분
-  "호텔 프런트":     "MF3mGyEYCl7XYWbV9V6O", // Elli - 여성, 부드러움
+  "황금치킨 직원": "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 따뜻
+  "헤어샵 직원": "MF3mGyEYCl7XYWbV9V6O", // Elli - 여성, 친근
+  "레스토랑 직원": "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
+  "연세내과 접수": "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 차분
+  "호텔 프런트": "MF3mGyEYCl7XYWbV9V6O", // Elli - 여성, 부드러움
   "고객센터 상담사": "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
-  "은행 상담원":     "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
-  "택배 고객센터":   "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 차분
+  "은행 상담원": "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
+  "택배 고객센터": "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 차분
   "삼성 서비스센터": "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 전문적
   "주민센터 담당자": "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 묵직
-  "인사팀 담당자":   "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 표현력
-  "집주인":          "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 묵직
+  "인사팀 담당자": "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 표현력
+  "집주인": "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 묵직
   "관리사무소 직원": "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 차분
-  "거래처 담당자":   "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 표현력
+  "거래처 담당자": "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 표현력
 };
 
 // TTS: ElevenLabs (자연스러운 사람 목소리, 한국어 지원)
