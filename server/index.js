@@ -70,12 +70,12 @@ app.post("/api/script", async (req, res) => {
   try {
     const [scriptMsg, tipsMsg] = await Promise.all([
       client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 4000,
         messages: [{ role: "user", content: scriptPrompt }],
       }),
       client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 300,
         messages: [{ role: "user", content: tipsPrompt }],
       }),
@@ -135,7 +135,7 @@ app.post("/api/voice", async (req, res) => {
   }
   try {
     const msg = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 200,
       system: systemPrompt,
       messages,
@@ -160,7 +160,7 @@ app.post("/api/voice-feedback", async (req, res) => {
 
   try {
     const msg = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 300,
       messages: [{ role: "user", content: prompt }],
     });
