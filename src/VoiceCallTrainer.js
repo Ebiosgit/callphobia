@@ -319,7 +319,6 @@ export default function VoiceCallTrainer({ onBack }) {
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [sttSupported, setSttSupported] = useState(true);
-  const [volume, setVolume] = useState(0);
   const [textMode, setTextMode] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [micError, setMicError] = useState("");
@@ -377,7 +376,6 @@ export default function VoiceCallTrainer({ onBack }) {
         const buf = new Uint8Array(analyser.frequencyBinCount);
         volumeIntervalRef.current = setInterval(() => {
           analyser.getByteFrequencyData(buf);
-          setVolume(Math.min(100, buf.reduce((a, b) => a + b, 0) / buf.length * 2));
         }, 100);
       } catch {
         // AudioContext 실패해도 스트림은 유지 (권한은 이미 획득)
@@ -391,7 +389,6 @@ export default function VoiceCallTrainer({ onBack }) {
   const stopVolumeMonitor = () => {
     clearInterval(volumeIntervalRef.current);
     micStreamRef.current?.getTracks().forEach(t => t.stop());
-    setVolume(0);
   };
 
   // 타임아웃 유틸
@@ -612,10 +609,6 @@ export default function VoiceCallTrainer({ onBack }) {
   };
 
   const col = level?.color || "#34D399";
-  const stateLabel = voiceState === "ai-speaking" ? `${level?.role} 말하는 중...`
-    : voiceState === "listening" ? `말씀하세요 🎙️ · ${SILENCE_MS / 1000}초 침묵 시 전송`
-    : voiceState === "processing" ? "AI 응답 중..."
-    : "대기 중";
   const stateColor = voiceState === "listening" ? "#34D399" : voiceState === "ai-speaking" ? col : "#64748B";
 
   return (
