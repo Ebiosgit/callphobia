@@ -460,32 +460,22 @@ export default function VoiceCallTrainer({ onBack }) {
     if (!isEndingRef.current) startListeningLoop(lv, newHistory);
   };
 
-  // ── STT 루프 (핵심) ───────────────────────────────────────
-  // continuous: true 로 start()를 턴당 1회만 호출 → 모바일 권한 팝업 최소화
-  const startListeningLoop = (lv, history) => {
-    if (isEndingRef.current || isListeningRef.current) return;
+  // ── STT (통화 전체에서 start() 1회만 호출) ───────────────
+  // 권한 팝업 반복 방지: 통화 시작 시 1번 start(), 종료까지 유지
+  // isListeningRef 로 결과 처리 여부만 제어
+  const startSingleSTT = () => {
     if (!sttSupported) { setTextMode(true); return; }
-
-    levelRef.current = lv;
-    historyRef.current = history;
-    accumulatedRef.current = "";
-    startTimeRef.current = Date.now();
-    isListeningRef.current = true;
-    setTranscript("");
-    setInterimTranscript("");
-
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setTextMode(true); return; }
 
     const rec = new SR();
     rec.lang = "ko-KR";
-    rec.continuous = true;   // 핵심: 수 초마다 재start() 하지 않고 계속 듣기
+    rec.continuous = true;
     rec.interimResults = true;
     recognitionRef.current = rec;
 
-    rec.onstart = () => setVoiceState("listening");
-
     rec.onresult = (e) => {
+      if (!isListeningRef.current) return; // AI 말하는 중이면 무시
       let interim = "", final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript;
@@ -501,11 +491,11 @@ export default function VoiceCallTrainer({ onBack }) {
     };
 
     rec.onend = () => {
-      if (isEndingRef.current || !isListeningRef.current) return;
-      // iOS가 강제로 종료한 경우에만 재시작 (새 인스턴스 필요)
+      if (isEndingRef.current) return;
+      // 예기치 않은 종료(OS가 강제 종료) → 같은 인스턴스로 재시작 시도
       setTimeout(() => {
-        if (!isEndingRef.current && isListeningRef.current) {
-          startListeningLoop(levelRef.current, historyRef.current);
+        if (!isEndingRef.current) {
+          try { rec.start(); } catch { startSingleSTT(); }
         }
       }, 300);
     };
@@ -514,31 +504,31 @@ export default function VoiceCallTrainer({ onBack }) {
       if (e.error === "not-allowed" || e.error === "permission-denied") {
         setMicError("마이크 권한이 거부됐어요. 텍스트 입력으로 전환할게요.");
         setTextMode(true);
-        isListeningRef.current = false;
-        return;
       }
-      if (!isEndingRef.current && isListeningRef.current) {
-        setTimeout(() => {
-          if (!isEndingRef.current && isListeningRef.current) {
-            startListeningLoop(levelRef.current, historyRef.current);
-          }
-        }, 300);
-      }
+      // 그 외 에러(no-speech 등)는 onend가 처리
     };
 
-    try { rec.start(); } catch {
-      setTimeout(() => {
-        if (!isEndingRef.current && isListeningRef.current) {
-          startListeningLoop(levelRef.current, historyRef.current);
-        }
-      }, 300);
-    }
+    try { rec.start(); } catch { setTextMode(true); }
+  };
+
+  // startListeningLoop: STT는 이미 실행 중이므로 상태만 초기화
+  const startListeningLoop = (lv, history) => {
+    if (isEndingRef.current) return;
+    if (!sttSupported) { setTextMode(true); return; }
+    levelRef.current = lv;
+    historyRef.current = history;
+    accumulatedRef.current = "";
+    startTimeRef.current = Date.now();
+    isListeningRef.current = true;
+    setTranscript("");
+    setInterimTranscript("");
+    setVoiceState("listening");
   };
 
   const submitAccumulated = () => {
     clearTimeout(silenceTimerRef.current);
     isListeningRef.current = false;
-    recognitionRef.current?.abort();
+    // abort() 제거: STT를 종료 시까지 유지해 start() 재호출 없이 권한 팝업 차단
 
     const said = accumulatedRef.current.trim();
     accumulatedRef.current = "";
@@ -583,6 +573,7 @@ export default function VoiceCallTrainer({ onBack }) {
     setTimeout(async () => {
       setIsConnecting(false);
       setScreen("calling");
+      startSingleSTT(); // 통화 전체에서 1번만 start() → 권한 팝업 1회
       const initHistory = [{ role: "user", content: "[CALL_START]", time: Date.now() }];
       historyRef.current = initHistory;
       await sendToAI(initHistory, lv);
