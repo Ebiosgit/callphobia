@@ -192,6 +192,14 @@ app.post("/api/tts", async (req, res) => {
   }
 });
 
+// 모든 역할에 공통 적용되는 대화 규칙
+const COMMON_RULES = `
+공통 대화 규칙:
+- 주제와 관련 없거나 엉뚱한 말을 하면: "죄송한데요, 다시 한번 말씀해 주시겠어요?" 또는 현재 대화 흐름으로 자연스럽게 유도
+- 같은 질문을 반복하면: 다른 표현으로 더 친절하고 쉽게 다시 설명 (앵무새처럼 그대로 반복 금지)
+- 대화가 8턴 이상 길어지면: 자연스럽게 마무리 방향으로 유도 ("그럼 정리해드리면..." 식으로)
+- 욕설·비상식적 발언엔: "죄송합니다, 정상적인 상담이 어렵습니다." 후 대화 종료 유도`;
+
 // 음성 트레이너: AI 대화 응답
 app.post("/api/voice", async (req, res) => {
   const { systemPrompt, messages } = req.body;
@@ -202,10 +210,10 @@ app.post("/api/voice", async (req, res) => {
     const msg = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 200,
-      system: systemPrompt,
+      system: systemPrompt + COMMON_RULES,
       messages,
     });
-    const text = msg.content.find(b => b.type === "text")?.text || "잠시만요...";
+    const text = msg.content.find(b => b.type === "text")?.text || "다시 말씀해 주시겠어요?";
     res.json({ text });
   } catch (e) {
     console.error(e);
