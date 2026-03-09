@@ -27,58 +27,26 @@ app.get("/api/health", async (req, res) => {
     aiError = e.message;
   }
 
-  // Naver TTS 연결 테스트
-  const naverIdExists = !!process.env.NAVER_CLIENT_ID;
-  const naverSecretExists = !!process.env.NAVER_CLIENT_SECRET;
-  let naverTtsTest = "키 없음", naverTtsError = "";
-  if (naverIdExists && naverSecretExists) {
-    try {
-      const params = new URLSearchParams({ speaker: "nara", speed: "0", pitch: "0", text: "테스트", format: "mp3" });
-      const r = await fetch("https://openapi.naver.com/v1/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "X-Naver-Client-Id": process.env.NAVER_CLIENT_ID,
-          "X-Naver-Client-Secret": process.env.NAVER_CLIENT_SECRET,
-        },
-        body: params.toString(),
-      });
-      naverTtsTest = r.ok ? "성공" : `실패(${r.status})`;
-      if (!r.ok) naverTtsError = await r.text();
-    } catch (e) {
-      naverTtsTest = "실패";
-      naverTtsError = e.message;
-    }
+  // gTTS 연결 테스트
+  let gttsTest = "실패", gttsError = "";
+  try {
+    const r = await fetch(
+      `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent("테스트")}&tl=ko&client=tw-ob`,
+      { headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://translate.google.com/" } }
+    );
+    gttsTest = r.ok ? "성공" : `실패(${r.status})`;
+    if (!r.ok) gttsError = await r.text();
+  } catch (e) {
+    gttsError = e.message;
   }
 
   res.json({
     status: aiTest === "성공" ? "ok" : "error",
     anthropic: { keyExists, keyPrefix, test: aiTest, reply, error: aiError },
-    naverTts: { idExists: naverIdExists, secretExists: naverSecretExists, test: naverTtsTest, error: naverTtsError },
+    gtts: { test: gttsTest, error: gttsError },
   });
 });
 
-// 레벨별 음성 설정 (Naver CLOVA Voice)
-// 여성: nara(기본), mijin(감성), clara(친절)
-// 남성: jinho(기본), matt(친절)
-// speed: -5(느림)~5(빠름), pitch: -5~5 (0=기본)
-const VOICE_MAP = {
-  // ── 여성 역할 ──────────────────────────────────────
-  "황금치킨 직원":   { speaker: "clara", speed: -1, pitch: 0 },
-  "헤어샵 직원":     { speaker: "clara", speed: -1, pitch: 1 },
-  "레스토랑 직원":   { speaker: "nara",  speed: -1, pitch: 0 },
-  "연세내과 접수":   { speaker: "nara",  speed: -2, pitch: 0 },
-  "호텔 프런트":     { speaker: "clara", speed: -2, pitch: 0 },
-  "고객센터 상담사": { speaker: "mijin", speed: -1, pitch: 0 },
-  "은행 상담원":     { speaker: "nara",  speed: -2, pitch: 0 },
-  // ── 남성 역할 ──────────────────────────────────────
-  "택배 고객센터":   { speaker: "jinho", speed: -1, pitch: 0 },
-  "삼성 서비스센터": { speaker: "matt",  speed: -1, pitch: 0 },
-  "주민센터 담당자": { speaker: "jinho", speed: -2, pitch: 0 },
-  "인사팀 담당자":   { speaker: "matt",  speed: -1, pitch: 0 },
-  // ── 기본 ───────────────────────────────────────────
-  default:           { speaker: "nara",  speed: -1, pitch: 0 },
-};
 
 app.post("/api/script", async (req, res) => {
   const { situation, customLabel, detail, tone } = req.body;
@@ -158,62 +126,69 @@ app.post("/api/script", async (req, res) => {
   }
 });
 
-// TTS: Naver CLOVA Voice 음성 합성
-app.post("/api/tts", async (req, res) => {
-  const { text, role } = req.body;
-  if (!text) return res.status(400).json({ error: "text는 필수입니다." });
-
-  const { speaker, speed, pitch } = VOICE_MAP[role] || VOICE_MAP.default;
-  const clientId = process.env.NAVER_CLIENT_ID;
-  const clientSecret = process.env.NAVER_CLIENT_SECRET;
-
-  // Naver CLOVA Voice 사용 (키 있을 때)
-  if (clientId && clientSecret) {
-    try {
-      const params = new URLSearchParams({ speaker, speed: String(speed), pitch: String(pitch), text, format: "mp3" });
-      const response = await fetch("https://openapi.naver.com/v1/tts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "X-Naver-Client-Id": clientId,
-          "X-Naver-Client-Secret": clientSecret,
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Naver TTS 오류(${response.status}): ${err}`);
-      }
-
-      const audioBuffer = await response.arrayBuffer();
-      res.setHeader("Content-Type", "audio/mpeg");
-      return res.send(Buffer.from(audioBuffer));
-    } catch (e) {
-      console.error("Naver TTS error:", e.message);
-      // 오류 시 Edge TTS로 폴백
+// 긴 텍스트를 200자 이하로 분할 (gTTS 제한)
+function splitText(text, maxLen = 180) {
+  const chunks = [];
+  const sentences = text.split(/(?<=[.!?~,。])\s*/);
+  let current = "";
+  for (const s of sentences) {
+    if ((current + s).length > maxLen) {
+      if (current) chunks.push(current.trim());
+      current = s.length > maxLen ? s.slice(0, maxLen) : s;
+    } else {
+      current += s;
     }
   }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text.slice(0, maxLen)];
+}
 
-  // 폴백: Edge TTS (NAVER 키 없을 때)
+// TTS: gTTS (Google 번역 TTS — API 키 불필요)
+app.post("/api/tts", async (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: "text는 필수입니다." });
+
   try {
-    const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
-    const isMale = ["jinho", "matt"].includes(speaker);
-    const edgeVoice = isMale ? "ko-KR-BongJinNeural" : "ko-KR-JiMinNeural";
-    const tts = new MsEdgeTTS();
-    await tts.setMetadata(edgeVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const chunks = [];
-    const { audioStream } = tts.toStream(text, { rate: 0.92, pitch: "+0Hz" });
-    audioStream.on("data", chunk => chunks.push(chunk));
-    audioStream.on("close", () => {
-      res.setHeader("Content-Type", "audio/mpeg");
-      res.send(Buffer.concat(chunks));
-    });
-    audioStream.on("error", (e) => {
-      if (!res.headersSent) res.status(500).json({ error: "TTS 오류" });
-    });
+    const chunks = splitText(text);
+    const audioChunks = [];
+
+    for (const chunk of chunks) {
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ko&client=tw-ob&ttsspeed=0.9`;
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Referer": "https://translate.google.com/",
+        },
+      });
+
+      if (!response.ok) throw new Error(`gTTS 오류: ${response.status}`);
+      const buf = await response.arrayBuffer();
+      audioChunks.push(Buffer.from(buf));
+    }
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    return res.send(Buffer.concat(audioChunks));
   } catch (e) {
-    if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
+    console.error("gTTS error:", e.message);
+
+    // 폴백: Edge TTS
+    try {
+      const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
+      const tts = new MsEdgeTTS();
+      await tts.setMetadata("ko-KR-JiMinNeural", OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+      const parts = [];
+      const { audioStream } = tts.toStream(text, { rate: 0.92, pitch: "+0Hz" });
+      audioStream.on("data", c => parts.push(c));
+      audioStream.on("close", () => {
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.send(Buffer.concat(parts));
+      });
+      audioStream.on("error", () => {
+        if (!res.headersSent) res.status(500).json({ error: "TTS 오류" });
+      });
+    } catch {
+      if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
+    }
   }
 });
 
