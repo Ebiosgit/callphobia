@@ -442,7 +442,7 @@ export default function VoiceCallTrainer({ onBack }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemPrompt: lv.systemPrompt,
-          messages: history.filter(m => m.content !== "[CALL_START]").map(m => ({ role: m.role, content: m.content }))
+          messages: history.map(m => ({ role: m.role, content: m.content === "[CALL_START]" ? "(전화 연결됨. 지금 바로 첫 인사를 시작하세요.)" : m.content }))
         }),
         signal: controller.signal,
       });
