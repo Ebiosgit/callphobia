@@ -364,19 +364,24 @@ export default function VoiceCallTrainer({ onBack }) {
   const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   // ── 볼륨 모니터 ──────────────────────────────────────────
-  const startVolumeMonitor = async () => {
+  const startVolumeMonitor = async (existingStream = null) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 이미 얻은 스트림을 재사용해 중복 권한 요청 방지
+      const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      ctx.createMediaStreamSource(stream).connect(analyser);
-      const buf = new Uint8Array(analyser.frequencyBinCount);
-      volumeIntervalRef.current = setInterval(() => {
-        analyser.getByteFrequencyData(buf);
-        setVolume(Math.min(100, buf.reduce((a, b) => a + b, 0) / buf.length * 2));
-      }, 100);
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        volumeIntervalRef.current = setInterval(() => {
+          analyser.getByteFrequencyData(buf);
+          setVolume(Math.min(100, buf.reduce((a, b) => a + b, 0) / buf.length * 2));
+        }, 100);
+      } catch {
+        // AudioContext 실패해도 스트림은 유지 (권한은 이미 획득)
+      }
     } catch {
       setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
       setTextMode(true);
@@ -564,7 +569,15 @@ export default function VoiceCallTrainer({ onBack }) {
     setLevel(lv); setIsConnecting(true);
     setMessages([]); setCallDuration(0);
     setVoiceState("idle"); setTranscript("");
-    await startVolumeMonitor();
+    // 마이크 권한을 한 번만 요청하고 스트림을 공유
+    // (SpeechRecognition이 추가로 권한 팝업을 띄우지 않도록)
+    let preStream = null;
+    try {
+      preStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      // 권한 거부 시 startVolumeMonitor 내부에서 처리
+    }
+    await startVolumeMonitor(preStream);
     setTimeout(async () => {
       setIsConnecting(false);
       setScreen("calling");
