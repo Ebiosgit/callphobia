@@ -289,7 +289,7 @@ function FeedbackAdvice({ feedback, level }) {
       .then(d => setAdvice(d.advice || ""))
       .catch(() => setAdvice("수고하셨어요! 꾸준히 연습하면 반드시 늘어납니다."))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div style={{ background: `${level.color}12`, borderRadius: "16px", padding: "16px", border: `1px solid ${level.color}25` }}>
       <div style={{ fontSize: "12px", fontWeight: "700", color: level.color, marginBottom: "10px" }}>🤖 AI 코치 피드백</div>
@@ -642,7 +642,7 @@ export default function VoiceCallTrainer({ onBack }) {
 
   return (
     <div style={{
-      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100vh", minHeight: "100dvh",
+      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100dvh",
       background: "#070B16", color: "white",
       opacity: mounted ? 1 : 0, transition: "opacity 0.4s ease"
     }}>
