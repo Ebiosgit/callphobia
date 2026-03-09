@@ -369,24 +369,13 @@ export default function VoiceCallTrainer({ onBack }) {
 
   const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  // ── 볼륨 모니터 ──────────────────────────────────────────
+  // ── 마이크 스트림 관리 ────────────────────────────────────
+  // AudioContext 없이 스트림만 보관 → webkitSpeechRecognition과 충돌 방지
   const startVolumeMonitor = async (existingStream = null) => {
     try {
-      // 이미 얻은 스트림을 재사용해 중복 권한 요청 방지
       const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        ctx.createMediaStreamSource(stream).connect(analyser);
-        const buf = new Uint8Array(analyser.frequencyBinCount);
-        volumeIntervalRef.current = setInterval(() => {
-          analyser.getByteFrequencyData(buf);
-        }, 100);
-      } catch {
-        // AudioContext 실패해도 스트림은 유지 (권한은 이미 획득)
-      }
+      // AudioContext 의도적으로 생략: UI에 볼륨 표시 없음 + SpeechRecognition 충돌 원인
     } catch {
       setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
       setTextMode(true);
@@ -492,9 +481,14 @@ export default function VoiceCallTrainer({ onBack }) {
       }
     };
     rec.onerror = (e) => {
+      console.warn("SpeechRecognition error:", e.error);
       if (e.error === "not-allowed" || e.error === "permission-denied") {
         setMicError("마이크 권한이 거부됐어요. 텍스트 입력으로 전환할게요.");
         setTextMode(true);
+      } else if (e.error === "network") {
+        setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
+      } else if (e.error === "aborted") {
+        // 정상적인 abort (무시)
       }
       setVoiceState("idle");
     };
