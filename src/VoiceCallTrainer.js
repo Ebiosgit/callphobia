@@ -563,17 +563,18 @@ export default function VoiceCallTrainer({ onBack }) {
     setVoiceState("idle"); setTranscript("");
     // 마이크 권한을 한 번만 요청하고 스트림을 공유
     // (SpeechRecognition이 추가로 권한 팝업을 띄우지 않도록)
-    let preStream = null;
-    try {
-      preStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      // 권한 거부 시 startVolumeMonitor 내부에서 처리
-    }
-    await startVolumeMonitor(preStream);
+    // 버튼 클릭(사용자 제스처) 컨텍스트에서 STT를 즉시 시작
+    // → setTimeout 밖에서 호출해야 Android Chrome이 재요청 안 함
+    startSingleSTT();
+
+    // getUserMedia는 STT 권한 이후에 볼륨 모니터용으로만 조용히 시도
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => startVolumeMonitor(stream))
+      .catch(() => {}); // 볼륨 모니터 실패해도 STT는 이미 동작 중
+
     setTimeout(async () => {
       setIsConnecting(false);
       setScreen("calling");
-      startSingleSTT(); // 통화 전체에서 1번만 start() → 권한 팝업 1회
       const initHistory = [{ role: "user", content: "[CALL_START]", time: Date.now() }];
       historyRef.current = initHistory;
       await sendToAI(initHistory, lv);
