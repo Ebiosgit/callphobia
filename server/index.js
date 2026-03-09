@@ -1,6 +1,7 @@
 require("dotenv").config({ path: "../.env" });
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const Anthropic = require("@anthropic-ai/sdk");
 const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
 
@@ -170,6 +171,14 @@ app.post("/api/voice-feedback", async (req, res) => {
     res.status(500).json({ error: "피드백 생성 오류가 발생했습니다." });
   }
 });
+
+// 프로덕션: React 빌드 파일 서빙
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../build")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../build", "index.html"));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
