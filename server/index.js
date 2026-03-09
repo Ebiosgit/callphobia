@@ -27,25 +27,25 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// 레벨별 음성 설정
-// JiMinNeural(여성) / BongJinNeural(남성) — 최신 뉴럴 보이스, 더 자연스러운 발화
-// rate: 0.90~0.95 (느릴수록 사람 목소리에 가까움), pitch: 최소 조정
+// 레벨별 음성 설정 (Google Cloud TTS Neural2)
+// ko-KR-Neural2-A/D: 여성, ko-KR-Neural2-B/C: 남성
+// speakingRate: 0.90~0.95, pitch: 0.0 (기본값)
 const VOICE_MAP = {
   // ── 여성 역할 ──────────────────────────────────────
-  "황금치킨 직원":   { voice: "ko-KR-JiMinNeural",   rate: 0.93, pitch: "+0Hz" },
-  "헤어샵 직원":     { voice: "ko-KR-JiMinNeural",   rate: 0.93, pitch: "+0Hz" },
-  "레스토랑 직원":   { voice: "ko-KR-JiMinNeural",   rate: 0.92, pitch: "+0Hz" },
-  "연세내과 접수":   { voice: "ko-KR-JiMinNeural",   rate: 0.90, pitch: "+0Hz" },
-  "호텔 프런트":     { voice: "ko-KR-JiMinNeural",   rate: 0.91, pitch: "+0Hz" },
-  "고객센터 상담사": { voice: "ko-KR-JiMinNeural",   rate: 0.92, pitch: "+0Hz" },
-  "은행 상담원":     { voice: "ko-KR-JiMinNeural",   rate: 0.90, pitch: "+0Hz" },
+  "황금치킨 직원":   { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 1.0,  pitch: 1.0  },
+  "헤어샵 직원":     { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 1.0,  pitch: 1.5  },
+  "레스토랑 직원":   { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.95, pitch: 0.0  },
+  "연세내과 접수":   { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.92, pitch: 0.0  },
+  "호텔 프런트":     { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 0.93, pitch: 0.0  },
+  "고객센터 상담사": { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.95, pitch: -1.0 },
+  "은행 상담원":     { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.92, pitch: 0.0  },
   // ── 남성 역할 ──────────────────────────────────────
-  "택배 고객센터":   { voice: "ko-KR-BongJinNeural", rate: 0.94, pitch: "+0Hz" },
-  "삼성 서비스센터": { voice: "ko-KR-BongJinNeural", rate: 0.92, pitch: "+0Hz" },
-  "주민센터 담당자": { voice: "ko-KR-BongJinNeural", rate: 0.90, pitch: "+0Hz" },
-  "인사팀 담당자":   { voice: "ko-KR-BongJinNeural", rate: 0.93, pitch: "+0Hz" },
+  "택배 고객센터":   { voice: "ko-KR-Neural2-C", gender: "MALE",   speakingRate: 0.97, pitch: 0.0  },
+  "삼성 서비스센터": { voice: "ko-KR-Neural2-B", gender: "MALE",   speakingRate: 0.93, pitch: 0.0  },
+  "주민센터 담당자": { voice: "ko-KR-Neural2-B", gender: "MALE",   speakingRate: 0.90, pitch: -1.0 },
+  "인사팀 담당자":   { voice: "ko-KR-Neural2-C", gender: "MALE",   speakingRate: 0.95, pitch: 0.0  },
   // ── 기본 ───────────────────────────────────────────
-  default:           { voice: "ko-KR-JiMinNeural",   rate: 0.92, pitch: "+0Hz" },
+  default:           { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 0.95, pitch: 0.0  },
 };
 
 app.post("/api/script", async (req, res) => {
@@ -126,31 +126,73 @@ app.post("/api/script", async (req, res) => {
   }
 });
 
-// TTS: 뉴럴 음성 합성
+// TTS: Google Cloud Neural2 음성 합성
 app.post("/api/tts", async (req, res) => {
   const { text, role } = req.body;
   if (!text) return res.status(400).json({ error: "text는 필수입니다." });
 
-  const { voice, rate, pitch } = VOICE_MAP[role] || VOICE_MAP.default;
+  const { voice, gender, speakingRate, pitch } = VOICE_MAP[role] || VOICE_MAP.default;
+  const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
+  // Google Cloud TTS 사용 (API 키 있을 때)
+  if (apiKey) {
+    try {
+      const response = await fetch(
+        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: { text },
+            voice: { languageCode: "ko-KR", name: voice, ssmlGender: gender },
+            audioConfig: {
+              audioEncoding: "MP3",
+              speakingRate,
+              pitch,
+              effectsProfileId: ["telephony-class-application"],
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Google TTS API 오류: ${err}`);
+      }
+
+      const { audioContent } = await response.json();
+      const audio = Buffer.from(audioContent, "base64");
+      res.setHeader("Content-Type", "audio/mpeg");
+      return res.send(audio);
+    } catch (e) {
+      console.error("Google TTS error:", e.message);
+      // API 오류 시 Edge TTS로 폴백
+    }
+  }
+
+  // 폴백: Edge TTS (GOOGLE_TTS_API_KEY 없을 때)
   try {
+    const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
+    const edgeVoiceMap = {
+      "FEMALE": { voice: "ko-KR-JiMinNeural",   rate: speakingRate, pitch: "+0Hz" },
+      "MALE":   { voice: "ko-KR-BongJinNeural", rate: speakingRate, pitch: "+0Hz" },
+    };
+    const { voice: ev, rate, pitch: ep } = edgeVoiceMap[gender] || edgeVoiceMap["FEMALE"];
     const tts = new MsEdgeTTS();
-    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-
+    await tts.setMetadata(ev, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
     const chunks = [];
-    const { audioStream } = tts.toStream(text, { rate, pitch });
+    const { audioStream } = tts.toStream(text, { rate, pitch: ep });
     audioStream.on("data", chunk => chunks.push(chunk));
     audioStream.on("close", () => {
-      const audio = Buffer.concat(chunks);
       res.setHeader("Content-Type", "audio/mpeg");
-      res.send(audio);
+      res.send(Buffer.concat(chunks));
     });
     audioStream.on("error", (e) => {
-      console.error("TTS stream error:", e);
+      console.error("Edge TTS error:", e);
       if (!res.headersSent) res.status(500).json({ error: "TTS 오류" });
     });
   } catch (e) {
-    console.error("TTS error:", e);
+    console.error("Edge TTS fallback error:", e);
     if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
   }
 });
