@@ -359,7 +359,7 @@ function parseScript(text) {
   let currentContent = [];
 
   for (const line of lines) {
-    const match = line.match(/^【(.+?)】$/) || line.match(/^\[(.+?)\]$/);
+    const match = line.match(/^(?:#{1,3}\s*)?【(.+?)】\s*$/) || line.match(/^(?:#{1,3}\s*)?\[(.+?)\]\s*$/);
     if (match) {
       if (currentLabel) blocks.push({ label: currentLabel, content: currentContent.join("\n").trim() });
       currentLabel = match[1];
