@@ -461,8 +461,7 @@ export default function VoiceCallTrainer({ onBack }) {
   };
 
   // ── STT 루프 (핵심) ───────────────────────────────────────
-  // 단순하게: recognition 하나를 생성하고, onend 시 재시작
-  // 침묵 타이머가 발동하면 전송
+  // continuous: true 로 start()를 턴당 1회만 호출 → 모바일 권한 팝업 최소화
   const startListeningLoop = (lv, history) => {
     if (isEndingRef.current || isListeningRef.current) return;
     if (!sttSupported) { setTextMode(true); return; }
@@ -475,18 +474,12 @@ export default function VoiceCallTrainer({ onBack }) {
     setTranscript("");
     setInterimTranscript("");
 
-    launchRec();
-  };
-
-  const launchRec = () => {
-    if (isEndingRef.current || !isListeningRef.current) return;
-
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setTextMode(true); return; }
 
     const rec = new SR();
     rec.lang = "ko-KR";
-    rec.continuous = false;
+    rec.continuous = true;   // 핵심: 수 초마다 재start() 하지 않고 계속 듣기
     rec.interimResults = true;
     recognitionRef.current = rec;
 
@@ -503,16 +496,18 @@ export default function VoiceCallTrainer({ onBack }) {
         accumulatedRef.current += (accumulatedRef.current ? " " : "") + final;
         setTranscript(accumulatedRef.current);
       }
-      // 말이 올 때마다 침묵 타이머 리셋
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(submitAccumulated, SILENCE_MS);
     };
 
     rec.onend = () => {
       if (isEndingRef.current || !isListeningRef.current) return;
-      // 침묵 타이머가 아직 살아있으면 → 계속 듣기 위해 재시작
-      // 타이머가 없으면(발동했거나 아직 말 안 함) → 재시작
-      setTimeout(launchRec, 100);
+      // iOS가 강제로 종료한 경우에만 재시작 (새 인스턴스 필요)
+      setTimeout(() => {
+        if (!isEndingRef.current && isListeningRef.current) {
+          startListeningLoop(levelRef.current, historyRef.current);
+        }
+      }, 300);
     };
 
     rec.onerror = (e) => {
@@ -522,14 +517,21 @@ export default function VoiceCallTrainer({ onBack }) {
         isListeningRef.current = false;
         return;
       }
-      // no-speech, aborted 등 → 재시작
       if (!isEndingRef.current && isListeningRef.current) {
-        setTimeout(launchRec, 200);
+        setTimeout(() => {
+          if (!isEndingRef.current && isListeningRef.current) {
+            startListeningLoop(levelRef.current, historyRef.current);
+          }
+        }, 300);
       }
     };
 
     try { rec.start(); } catch {
-      setTimeout(launchRec, 300);
+      setTimeout(() => {
+        if (!isEndingRef.current && isListeningRef.current) {
+          startListeningLoop(levelRef.current, historyRef.current);
+        }
+      }, 300);
     }
   };
 
