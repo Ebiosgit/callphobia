@@ -347,6 +347,13 @@ export default function VoiceCallTrainer({ onBack }) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
     if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) setSttSupported(false);
+    // 마이크 권한 사전 요청: 이미 허용된 경우 팝업 없이 캐시 갱신
+    // 처음 방문 시 권한 캐싱 → 이후 SpeechRecognition 추가 팝업 방지
+    if (navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => stream.getTracks().forEach(t => t.stop()))
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -531,12 +538,18 @@ export default function VoiceCallTrainer({ onBack }) {
     setLevel(lv); setIsConnecting(true);
     setMessages([]); setCallDuration(0);
     setVoiceState("idle"); setTranscript("");
-    // 마이크 권한을 한 번만 요청하고 스트림을 공유
-    // (SpeechRecognition이 추가로 권한 팝업을 띄우지 않도록)
-    // 볼륨 모니터 (실패해도 무관)
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => startVolumeMonitor(stream))
-      .catch(() => {});
+
+    // 마이크 권한을 await로 확보한 뒤 스트림 공유
+    // → SpeechRecognition이 추가 팝업을 띄우지 않음
+    // → 권한 다이얼로그가 뜨는 동안 "연결 중" 화면 유지
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      startVolumeMonitor(stream);
+    } catch {
+      // 마이크 권한 거부 시 텍스트 모드로 폴백
+      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
+      setTextMode(true);
+    }
 
     setTimeout(async () => {
       setIsConnecting(false);
