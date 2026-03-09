@@ -29,11 +29,38 @@ app.get("/api/health", async (req, res) => {
 
   const elevenLabsKeyExists = !!process.env.ELEVENLABS_API_KEY;
   const elevenLabsKeyPrefix = process.env.ELEVENLABS_API_KEY?.slice(0, 10) || "없음";
+  let elevenLabsTest = "미테스트", elevenLabsError = "";
+  if (elevenLabsKeyExists) {
+    try {
+      const elRes = await fetch(
+        "https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM",
+        {
+          method: "POST",
+          headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: "안녕하세요",
+            model_id: "eleven_multilingual_v2",
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          }),
+        }
+      );
+      if (elRes.ok) {
+        elevenLabsTest = "성공";
+      } else {
+        const errText = await elRes.text();
+        elevenLabsTest = "실패";
+        elevenLabsError = `${elRes.status}: ${errText.slice(0, 200)}`;
+      }
+    } catch (e) {
+      elevenLabsTest = "실패";
+      elevenLabsError = e.message;
+    }
+  }
 
   res.json({
     status: aiTest === "성공" ? "ok" : "error",
     anthropic: { keyExists, keyPrefix, test: aiTest, reply, error: aiError },
-    elevenLabsTts: { keyExists: elevenLabsKeyExists, keyPrefix: elevenLabsKeyPrefix },
+    elevenLabsTts: { keyExists: elevenLabsKeyExists, keyPrefix: elevenLabsKeyPrefix, test: elevenLabsTest, error: elevenLabsError },
   });
 });
 
