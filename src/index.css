@@ -1,3 +1,11 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,6 +13,44 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  padding-top: env(safe-area-inset-top);
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* iOS 입력창 자동 줌 방지 (font-size 16px 미만 시 iOS가 화면 확대함) */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* 버튼 터치 개선 */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 통화 화면 — iOS Safari 브라우저 툴바 제외한 전체 높이 */
+.vh-full {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* 스크롤바 숨김 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 하단 safe-area (홈 인디케이터 아이폰 대응) */
+.safe-area-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 code {

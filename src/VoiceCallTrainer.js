@@ -301,7 +301,7 @@ function FeedbackAdvice({ feedback, level }) {
   );
 }
 
-export default function VoiceCallTrainer() {
+export default function VoiceCallTrainer({ onBack }) {
   const [screen, setScreen] = useState("home");
   const [level, setLevel] = useState(null);
   const [showCustom, setShowCustom] = useState(false);
@@ -642,7 +642,7 @@ export default function VoiceCallTrainer() {
 
   return (
     <div style={{
-      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100vh",
+      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100vh", minHeight: "100dvh",
       background: "#070B16", color: "white",
       opacity: mounted ? 1 : 0, transition: "opacity 0.4s ease"
     }}>
@@ -661,7 +661,8 @@ export default function VoiceCallTrainer() {
 
       {/* HOME */}
       {screen === "home" && !isConnecting && (
-        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "32px 16px 60px", animation: "fadeUp .5s ease" }}>
+        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "24px 16px 60px", animation: "fadeUp .5s ease" }}>
+          <button onClick={onBack} style={{ background: "none", border: "none", color: "#475569", fontSize: "14px", cursor: "pointer", padding: "0 0 20px", display: "block", fontFamily: "inherit" }}>← 홈으로</button>
           <div style={{ textAlign: "center", marginBottom: "36px" }}>
             <div style={{ display: "inline-flex", width: "72px", height: "72px", borderRadius: "24px", background: "linear-gradient(135deg,#34D399,#3B82F6)", alignItems: "center", justifyContent: "center", fontSize: "32px", marginBottom: "16px", boxShadow: "0 8px 32px rgba(52,211,153,.3)" }}>🎙️</div>
             <h1 style={{ fontSize: "24px", fontWeight: "800", margin: "0 0 8px", letterSpacing: "-.5px" }}>음성 통화 트레이너</h1>
@@ -813,7 +814,7 @@ export default function VoiceCallTrainer() {
 
       {/* CONNECTING */}
       {isConnecting && level && (
-        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "24px", animation: "fadeIn .3s ease" }}>
+        <div className="min-vh-full" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "24px", animation: "fadeIn .3s ease" }}>
           <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {[1, 2, 3].map(i => <div key={i} style={{ position: "absolute", width: `${i * 50}px`, height: `${i * 50}px`, borderRadius: "50%", border: `2px solid ${level.color}`, animation: `ripple 2s ease ${i * .5}s infinite` }} />)}
             <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: `${level.color}25`, border: `2px solid ${level.color}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", animation: "ring 1.2s ease infinite", zIndex: 1 }}>{level.emoji}</div>
@@ -827,7 +828,7 @@ export default function VoiceCallTrainer() {
 
       {/* CALLING */}
       {screen === "calling" && level && (
-        <div style={{ maxWidth: "460px", margin: "0 auto", display: "flex", flexDirection: "column", height: "100vh" }}>
+        <div className="vh-full" style={{ maxWidth: "460px", margin: "0 auto", display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "20px 16px 14px", background: `linear-gradient(180deg,${col}18 0%,transparent)`, borderBottom: "1px solid rgba(255,255,255,.06)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <div style={{ width: "46px", height: "46px", borderRadius: "50%", background: `${col}20`, border: `2px solid ${col}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>{level.emoji}</div>
@@ -859,7 +860,7 @@ export default function VoiceCallTrainer() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div style={{ padding: "16px", borderTop: "1px solid rgba(255,255,255,.06)", background: "rgba(0,0,0,.4)" }}>
+          <div className="safe-area-bottom" style={{ padding: "16px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,.06)", background: "rgba(0,0,0,.4)" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "16px", gap: "12px" }}>
               <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {voiceState === "listening" && <div style={{ position: "absolute", width: "72px", height: "72px", borderRadius: "50%", border: "2px solid #34D399", animation: "ripple 1.5s ease infinite" }} />}
@@ -943,7 +944,7 @@ export default function VoiceCallTrainer() {
 
       {/* FEEDBACK */}
       {screen === "feedback" && feedback && level && (
-        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "28px 16px 60px", animation: "fadeUp .5s ease" }}>
+        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "28px 16px max(60px, env(safe-area-inset-bottom))", animation: "fadeUp .5s ease" }}>
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
             <div style={{ fontSize: "11px", color: "#64748B", letterSpacing: "1px", marginBottom: "8px" }}>통화 결과 분석</div>
             <div style={{ fontSize: "76px", fontWeight: "800", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, color: feedback.totalScore >= 70 ? "#34D399" : feedback.totalScore >= 50 ? "#FBBF24" : "#F87171" }}>{feedback.totalScore}</div>
@@ -983,8 +984,9 @@ export default function VoiceCallTrainer() {
           <FeedbackAdvice feedback={feedback} level={level} />
           <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
             <button onClick={() => startCall(level)} style={{ flex: 1, padding: "13px", borderRadius: "13px", background: `linear-gradient(135deg,${col},${level.darkColor})`, border: "none", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>🔄 다시 연습</button>
-            <button onClick={resetAll} style={{ flex: 1, padding: "13px", borderRadius: "13px", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>🏠 레벨 선택</button>
+            <button onClick={resetAll} style={{ flex: 1, padding: "13px", borderRadius: "13px", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>📋 레벨 선택</button>
           </div>
+          <button onClick={onBack} style={{ width: "100%", marginTop: "10px", padding: "13px", borderRadius: "13px", background: "none", border: "1px solid rgba(255,255,255,.08)", color: "#475569", fontWeight: "600", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>← 홈으로</button>
         </div>
       )}
     </div>

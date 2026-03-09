@@ -373,7 +373,7 @@ function parseScript(text) {
   return blocks;
 }
 
-export default function ScriptGenerator() {
+export default function ScriptGenerator({ onBack }) {
   const [step, setStep] = useState(1);
   const [selectedSit, setSelectedSit] = useState(null);
   const [detail, setDetail] = useState("");
@@ -440,7 +440,7 @@ export default function ScriptGenerator() {
       fontFamily: "'Noto Sans KR', -apple-system, sans-serif",
       minHeight: "100vh",
       background: "linear-gradient(145deg, #F0F9F8 0%, #F5F0FF 50%, #FFF9F0 100%)",
-      padding: "0 0 60px",
+      padding: "0 0 max(60px, env(safe-area-inset-bottom))",
       opacity: mounted ? 1 : 0,
       transition: "opacity 0.5s ease"
     }}>
@@ -470,13 +470,20 @@ export default function ScriptGenerator() {
             </div>
           </div>
         </div>
-        {step > 1 && (
-          <button onClick={reset} style={{
+        <div style={{ display: "flex", gap: "8px" }}>
+          {step > 1 && (
+            <button onClick={reset} style={{
+              background: "none", border: "1.5px solid #E5E7EB", borderRadius: "10px",
+              padding: "6px 14px", fontSize: "13px", color: "#6B7280",
+              cursor: "pointer", fontWeight: "600"
+            }}>처음으로</button>
+          )}
+          <button onClick={onBack} style={{
             background: "none", border: "1.5px solid #E5E7EB", borderRadius: "10px",
             padding: "6px 14px", fontSize: "13px", color: "#6B7280",
             cursor: "pointer", fontWeight: "600"
-          }}>처음으로</button>
-        )}
+          }}>← 홈</button>
+        </div>
       </div>
 
       <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>

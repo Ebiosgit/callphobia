@@ -512,7 +512,7 @@ const pageStyle = {
   minHeight: "100vh",
   background: "linear-gradient(145deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%)",
   display: "flex", justifyContent: "center",
-  padding: "24px 16px",
+  padding: "24px 16px max(24px, env(safe-area-inset-bottom)) 16px",
 };
 
 const containerStyle = {
