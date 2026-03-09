@@ -3,7 +3,6 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const Anthropic = require("@anthropic-ai/sdk");
-const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
 
 const app = express();
 app.use(cors());
@@ -15,16 +14,43 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 app.get("/api/health", async (req, res) => {
   const keyExists = !!process.env.ANTHROPIC_API_KEY;
   const keyPrefix = process.env.ANTHROPIC_API_KEY?.slice(0, 16) || "없음";
+  const googleKeyExists = !!process.env.GOOGLE_TTS_API_KEY;
+  const googleKeyPrefix = process.env.GOOGLE_TTS_API_KEY?.slice(0, 8) || "없음";
+
+  let aiTest = "실패", reply = "", aiError = "";
   try {
     const msg = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 10,
       messages: [{ role: "user", content: "hi" }],
     });
-    res.json({ status: "ok", keyExists, keyPrefix, aiTest: "성공", reply: msg.content[0]?.text });
+    aiTest = "성공";
+    reply = msg.content[0]?.text;
   } catch (e) {
-    res.json({ status: "error", keyExists, keyPrefix, aiTest: "실패", error: e.message });
+    aiError = e.message;
   }
+
+  // Google TTS 연결 테스트
+  let googleTtsTest = "키 없음", googleTtsError = "";
+  if (googleKeyExists) {
+    try {
+      const r = await fetch(
+        `https://texttospeech.googleapis.com/v1/voices?key=${process.env.GOOGLE_TTS_API_KEY}&languageCode=ko-KR`,
+        { method: "GET" }
+      );
+      googleTtsTest = r.ok ? "성공" : `실패(${r.status})`;
+      if (!r.ok) googleTtsError = await r.text();
+    } catch (e) {
+      googleTtsTest = "실패";
+      googleTtsError = e.message;
+    }
+  }
+
+  res.json({
+    status: aiTest === "성공" ? "ok" : "error",
+    anthropic: { keyExists, keyPrefix, test: aiTest, reply, error: aiError },
+    googleTts: { keyExists: googleKeyExists, keyPrefix: googleKeyPrefix, test: googleTtsTest, error: googleTtsError },
+  });
 });
 
 // 레벨별 음성 설정 (Google Cloud TTS Neural2)
@@ -149,7 +175,6 @@ app.post("/api/tts", async (req, res) => {
               audioEncoding: "MP3",
               speakingRate,
               pitch,
-              effectsProfileId: ["telephony-class-application"],
             },
           }),
         }
