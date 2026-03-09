@@ -338,7 +338,7 @@ export default function VoiceCallTrainer({ onBack }) {
   const micStreamRef = useRef(null);
   const currentAudioRef = useRef(null);
 
-  const SILENCE_MS = 2500; // 침묵 후 전송까지 대기
+  const SILENCE_MS = 2000; // 침묵 후 전송까지 대기
 
   useEffect(() => {
     setMounted(true);
