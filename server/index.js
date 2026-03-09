@@ -14,9 +14,6 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 app.get("/api/health", async (req, res) => {
   const keyExists = !!process.env.ANTHROPIC_API_KEY;
   const keyPrefix = process.env.ANTHROPIC_API_KEY?.slice(0, 16) || "없음";
-  const googleKeyExists = !!process.env.GOOGLE_TTS_API_KEY;
-  const googleKeyPrefix = process.env.GOOGLE_TTS_API_KEY?.slice(0, 8) || "없음";
-
   let aiTest = "실패", reply = "", aiError = "";
   try {
     const msg = await client.messages.create({
@@ -30,48 +27,57 @@ app.get("/api/health", async (req, res) => {
     aiError = e.message;
   }
 
-  // Google TTS 연결 테스트
-  let googleTtsTest = "키 없음", googleTtsError = "";
-  if (googleKeyExists) {
+  // Naver TTS 연결 테스트
+  const naverIdExists = !!process.env.NAVER_CLIENT_ID;
+  const naverSecretExists = !!process.env.NAVER_CLIENT_SECRET;
+  let naverTtsTest = "키 없음", naverTtsError = "";
+  if (naverIdExists && naverSecretExists) {
     try {
-      const r = await fetch(
-        `https://texttospeech.googleapis.com/v1/voices?key=${process.env.GOOGLE_TTS_API_KEY}&languageCode=ko-KR`,
-        { method: "GET" }
-      );
-      googleTtsTest = r.ok ? "성공" : `실패(${r.status})`;
-      if (!r.ok) googleTtsError = await r.text();
+      const params = new URLSearchParams({ speaker: "nara", speed: "0", pitch: "0", text: "테스트", format: "mp3" });
+      const r = await fetch("https://openapi.naver.com/v1/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Naver-Client-Id": process.env.NAVER_CLIENT_ID,
+          "X-Naver-Client-Secret": process.env.NAVER_CLIENT_SECRET,
+        },
+        body: params.toString(),
+      });
+      naverTtsTest = r.ok ? "성공" : `실패(${r.status})`;
+      if (!r.ok) naverTtsError = await r.text();
     } catch (e) {
-      googleTtsTest = "실패";
-      googleTtsError = e.message;
+      naverTtsTest = "실패";
+      naverTtsError = e.message;
     }
   }
 
   res.json({
     status: aiTest === "성공" ? "ok" : "error",
     anthropic: { keyExists, keyPrefix, test: aiTest, reply, error: aiError },
-    googleTts: { keyExists: googleKeyExists, keyPrefix: googleKeyPrefix, test: googleTtsTest, error: googleTtsError },
+    naverTts: { idExists: naverIdExists, secretExists: naverSecretExists, test: naverTtsTest, error: naverTtsError },
   });
 });
 
-// 레벨별 음성 설정 (Google Cloud TTS Neural2)
-// ko-KR-Neural2-A/D: 여성, ko-KR-Neural2-B/C: 남성
-// speakingRate: 0.90~0.95, pitch: 0.0 (기본값)
+// 레벨별 음성 설정 (Naver CLOVA Voice)
+// 여성: nara(기본), mijin(감성), clara(친절)
+// 남성: jinho(기본), matt(친절)
+// speed: -5(느림)~5(빠름), pitch: -5~5 (0=기본)
 const VOICE_MAP = {
   // ── 여성 역할 ──────────────────────────────────────
-  "황금치킨 직원":   { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 1.0,  pitch: 1.0  },
-  "헤어샵 직원":     { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 1.0,  pitch: 1.5  },
-  "레스토랑 직원":   { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.95, pitch: 0.0  },
-  "연세내과 접수":   { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.92, pitch: 0.0  },
-  "호텔 프런트":     { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 0.93, pitch: 0.0  },
-  "고객센터 상담사": { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.95, pitch: -1.0 },
-  "은행 상담원":     { voice: "ko-KR-Neural2-D", gender: "FEMALE", speakingRate: 0.92, pitch: 0.0  },
+  "황금치킨 직원":   { speaker: "clara", speed: -1, pitch: 0 },
+  "헤어샵 직원":     { speaker: "clara", speed: -1, pitch: 1 },
+  "레스토랑 직원":   { speaker: "nara",  speed: -1, pitch: 0 },
+  "연세내과 접수":   { speaker: "nara",  speed: -2, pitch: 0 },
+  "호텔 프런트":     { speaker: "clara", speed: -2, pitch: 0 },
+  "고객센터 상담사": { speaker: "mijin", speed: -1, pitch: 0 },
+  "은행 상담원":     { speaker: "nara",  speed: -2, pitch: 0 },
   // ── 남성 역할 ──────────────────────────────────────
-  "택배 고객센터":   { voice: "ko-KR-Neural2-C", gender: "MALE",   speakingRate: 0.97, pitch: 0.0  },
-  "삼성 서비스센터": { voice: "ko-KR-Neural2-B", gender: "MALE",   speakingRate: 0.93, pitch: 0.0  },
-  "주민센터 담당자": { voice: "ko-KR-Neural2-B", gender: "MALE",   speakingRate: 0.90, pitch: -1.0 },
-  "인사팀 담당자":   { voice: "ko-KR-Neural2-C", gender: "MALE",   speakingRate: 0.95, pitch: 0.0  },
+  "택배 고객센터":   { speaker: "jinho", speed: -1, pitch: 0 },
+  "삼성 서비스센터": { speaker: "matt",  speed: -1, pitch: 0 },
+  "주민센터 담당자": { speaker: "jinho", speed: -2, pitch: 0 },
+  "인사팀 담당자":   { speaker: "matt",  speed: -1, pitch: 0 },
   // ── 기본 ───────────────────────────────────────────
-  default:           { voice: "ko-KR-Neural2-A", gender: "FEMALE", speakingRate: 0.95, pitch: 0.0  },
+  default:           { speaker: "nara",  speed: -1, pitch: 0 },
 };
 
 app.post("/api/script", async (req, res) => {
@@ -152,72 +158,61 @@ app.post("/api/script", async (req, res) => {
   }
 });
 
-// TTS: Google Cloud Neural2 음성 합성
+// TTS: Naver CLOVA Voice 음성 합성
 app.post("/api/tts", async (req, res) => {
   const { text, role } = req.body;
   if (!text) return res.status(400).json({ error: "text는 필수입니다." });
 
-  const { voice, gender, speakingRate, pitch } = VOICE_MAP[role] || VOICE_MAP.default;
-  const apiKey = process.env.GOOGLE_TTS_API_KEY;
+  const { speaker, speed, pitch } = VOICE_MAP[role] || VOICE_MAP.default;
+  const clientId = process.env.NAVER_CLIENT_ID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
-  // Google Cloud TTS 사용 (API 키 있을 때)
-  if (apiKey) {
+  // Naver CLOVA Voice 사용 (키 있을 때)
+  if (clientId && clientSecret) {
     try {
-      const response = await fetch(
-        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            input: { text },
-            voice: { languageCode: "ko-KR", name: voice, ssmlGender: gender },
-            audioConfig: {
-              audioEncoding: "MP3",
-              speakingRate,
-              pitch,
-            },
-          }),
-        }
-      );
+      const params = new URLSearchParams({ speaker, speed: String(speed), pitch: String(pitch), text, format: "mp3" });
+      const response = await fetch("https://openapi.naver.com/v1/tts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Naver-Client-Id": clientId,
+          "X-Naver-Client-Secret": clientSecret,
+        },
+        body: params.toString(),
+      });
 
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(`Google TTS API 오류: ${err}`);
+        throw new Error(`Naver TTS 오류(${response.status}): ${err}`);
       }
 
-      const { audioContent } = await response.json();
-      const audio = Buffer.from(audioContent, "base64");
+      const audioBuffer = await response.arrayBuffer();
       res.setHeader("Content-Type", "audio/mpeg");
-      return res.send(audio);
+      return res.send(Buffer.from(audioBuffer));
     } catch (e) {
-      console.error("Google TTS error:", e.message);
-      // API 오류 시 Edge TTS로 폴백
+      console.error("Naver TTS error:", e.message);
+      // 오류 시 Edge TTS로 폴백
     }
   }
 
-  // 폴백: Edge TTS (GOOGLE_TTS_API_KEY 없을 때)
+  // 폴백: Edge TTS (NAVER 키 없을 때)
   try {
     const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
-    const edgeVoiceMap = {
-      "FEMALE": { voice: "ko-KR-JiMinNeural",   rate: speakingRate, pitch: "+0Hz" },
-      "MALE":   { voice: "ko-KR-BongJinNeural", rate: speakingRate, pitch: "+0Hz" },
-    };
-    const { voice: ev, rate, pitch: ep } = edgeVoiceMap[gender] || edgeVoiceMap["FEMALE"];
+    const isMale = ["jinho", "matt"].includes(speaker);
+    const edgeVoice = isMale ? "ko-KR-BongJinNeural" : "ko-KR-JiMinNeural";
     const tts = new MsEdgeTTS();
-    await tts.setMetadata(ev, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    await tts.setMetadata(edgeVoice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
     const chunks = [];
-    const { audioStream } = tts.toStream(text, { rate, pitch: ep });
+    const { audioStream } = tts.toStream(text, { rate: 0.92, pitch: "+0Hz" });
     audioStream.on("data", chunk => chunks.push(chunk));
     audioStream.on("close", () => {
       res.setHeader("Content-Type", "audio/mpeg");
       res.send(Buffer.concat(chunks));
     });
     audioStream.on("error", (e) => {
-      console.error("Edge TTS error:", e);
       if (!res.headersSent) res.status(500).json({ error: "TTS 오류" });
     });
   } catch (e) {
-    console.error("Edge TTS fallback error:", e);
     if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
   }
 });
