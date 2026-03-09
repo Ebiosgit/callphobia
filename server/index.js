@@ -27,13 +27,13 @@ app.get("/api/health", async (req, res) => {
     aiError = e.message;
   }
 
-  const openaiKeyExists = !!process.env.OPENAI_API_KEY;
-  const openaiKeyPrefix = process.env.OPENAI_API_KEY?.slice(0, 10) || "없음";
+  const elevenLabsKeyExists = !!process.env.ELEVENLABS_API_KEY;
+  const elevenLabsKeyPrefix = process.env.ELEVENLABS_API_KEY?.slice(0, 10) || "없음";
 
   res.json({
     status: aiTest === "성공" ? "ok" : "error",
     anthropic: { keyExists, keyPrefix, test: aiTest, reply, error: aiError },
-    openaiTts: { keyExists: openaiKeyExists, keyPrefix: openaiKeyPrefix },
+    elevenLabsTts: { keyExists: elevenLabsKeyExists, keyPrefix: elevenLabsKeyPrefix },
   });
 });
 
@@ -116,60 +116,67 @@ app.post("/api/script", async (req, res) => {
   }
 });
 
-// 역할별 OpenAI TTS 음성 매핑
-// 여성: nova(따뜻·친근), shimmer(부드러움·전문적)
-// 남성: echo(차분), fable(표현력), onyx(깊고 묵직)
+// 역할별 ElevenLabs 음성 매핑
+// 여성: Rachel(21m00Tcm4TlvDq8ikWAM), Elli(MF3mGyEYCl7XYWbV9V6O)
+// 남성: Adam(pNInz6obpgDQGcFmaJgB), Arnold(VR6AewLTigWG4xSOukaG)
 const VOICE_MAP = {
-  "황금치킨 직원":   "nova",
-  "헤어샵 직원":     "nova",
-  "레스토랑 직원":   "shimmer",
-  "연세내과 접수":   "shimmer",
-  "호텔 프런트":     "shimmer",
-  "고객센터 상담사": "shimmer",
-  "은행 상담원":     "shimmer",
-  "택배 고객센터":   "echo",
-  "삼성 서비스센터": "echo",
-  "주민센터 담당자": "onyx",
-  "인사팀 담당자":   "fable",
-  "집주인":          "onyx",
-  "관리사무소 직원": "echo",
-  "거래처 담당자":   "fable",
+  "황금치킨 직원":   "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 따뜻
+  "헤어샵 직원":     "MF3mGyEYCl7XYWbV9V6O", // Elli - 여성, 친근
+  "레스토랑 직원":   "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
+  "연세내과 접수":   "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 차분
+  "호텔 프런트":     "MF3mGyEYCl7XYWbV9V6O", // Elli - 여성, 부드러움
+  "고객센터 상담사": "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
+  "은행 상담원":     "21m00Tcm4TlvDq8ikWAM", // Rachel - 여성, 전문적
+  "택배 고객센터":   "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 차분
+  "삼성 서비스센터": "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 전문적
+  "주민센터 담당자": "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 묵직
+  "인사팀 담당자":   "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 표현력
+  "집주인":          "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 묵직
+  "관리사무소 직원": "pNInz6obpgDQGcFmaJgB", // Adam - 남성, 차분
+  "거래처 담당자":   "VR6AewLTigWG4xSOukaG", // Arnold - 남성, 표현력
 };
 
-// TTS: OpenAI tts-1-hd (자연스러운 사람 목소리)
+// TTS: ElevenLabs (자연스러운 사람 목소리, 한국어 지원)
 app.post("/api/tts", async (req, res) => {
   const { text, role } = req.body;
   if (!text) return res.status(400).json({ error: "text는 필수입니다." });
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  const voice = VOICE_MAP[role] || "nova";
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = VOICE_MAP[role] || "21m00Tcm4TlvDq8ikWAM"; // 기본: Rachel
 
   if (apiKey) {
     try {
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1-hd",
-          input: text,
-          voice,
-          speed: 1.0,
-        }),
-      });
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text,
+            model_id: "eleven_multilingual_v2",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+              style: 0.0,
+              use_speaker_boost: true,
+            },
+          }),
+        }
+      );
 
       if (!response.ok) {
         const err = await response.text();
-        throw new Error(`OpenAI TTS 오류(${response.status}): ${err}`);
+        throw new Error(`ElevenLabs TTS 오류(${response.status}): ${err}`);
       }
 
       const audioBuffer = await response.arrayBuffer();
       res.setHeader("Content-Type", "audio/mpeg");
       return res.send(Buffer.from(audioBuffer));
     } catch (e) {
-      console.error("OpenAI TTS error:", e.message);
+      console.error("ElevenLabs TTS error:", e.message);
     }
   }
 
