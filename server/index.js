@@ -27,23 +27,13 @@ app.get("/api/health", async (req, res) => {
     aiError = e.message;
   }
 
-  // gTTS 연결 테스트
-  let gttsTest = "실패", gttsError = "";
-  try {
-    const r = await fetch(
-      `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent("테스트")}&tl=ko&client=tw-ob`,
-      { headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://translate.google.com/" } }
-    );
-    gttsTest = r.ok ? "성공" : `실패(${r.status})`;
-    if (!r.ok) gttsError = await r.text();
-  } catch (e) {
-    gttsError = e.message;
-  }
+  const openaiKeyExists = !!process.env.OPENAI_API_KEY;
+  const openaiKeyPrefix = process.env.OPENAI_API_KEY?.slice(0, 10) || "없음";
 
   res.json({
     status: aiTest === "성공" ? "ok" : "error",
     anthropic: { keyExists, keyPrefix, test: aiTest, reply, error: aiError },
-    gtts: { test: gttsTest, error: gttsError },
+    openaiTts: { keyExists: openaiKeyExists, keyPrefix: openaiKeyPrefix },
   });
 });
 
@@ -126,69 +116,80 @@ app.post("/api/script", async (req, res) => {
   }
 });
 
-// 긴 텍스트를 200자 이하로 분할 (gTTS 제한)
-function splitText(text, maxLen = 180) {
-  const chunks = [];
-  const sentences = text.split(/(?<=[.!?~,。])\s*/);
-  let current = "";
-  for (const s of sentences) {
-    if ((current + s).length > maxLen) {
-      if (current) chunks.push(current.trim());
-      current = s.length > maxLen ? s.slice(0, maxLen) : s;
-    } else {
-      current += s;
-    }
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length ? chunks : [text.slice(0, maxLen)];
-}
+// 역할별 OpenAI TTS 음성 매핑
+// 여성: nova(따뜻·친근), shimmer(부드러움·전문적)
+// 남성: echo(차분), fable(표현력), onyx(깊고 묵직)
+const VOICE_MAP = {
+  "황금치킨 직원":   "nova",
+  "헤어샵 직원":     "nova",
+  "레스토랑 직원":   "shimmer",
+  "연세내과 접수":   "shimmer",
+  "호텔 프런트":     "shimmer",
+  "고객센터 상담사": "shimmer",
+  "은행 상담원":     "shimmer",
+  "택배 고객센터":   "echo",
+  "삼성 서비스센터": "echo",
+  "주민센터 담당자": "onyx",
+  "인사팀 담당자":   "fable",
+  "집주인":          "onyx",
+  "관리사무소 직원": "echo",
+  "거래처 담당자":   "fable",
+};
 
-// TTS: gTTS (Google 번역 TTS — API 키 불필요)
+// TTS: OpenAI tts-1-hd (자연스러운 사람 목소리)
 app.post("/api/tts", async (req, res) => {
-  const { text } = req.body;
+  const { text, role } = req.body;
   if (!text) return res.status(400).json({ error: "text는 필수입니다." });
 
-  try {
-    const chunks = splitText(text);
-    const audioChunks = [];
+  const apiKey = process.env.OPENAI_API_KEY;
+  const voice = VOICE_MAP[role] || "nova";
 
-    for (const chunk of chunks) {
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ko&client=tw-ob&ttsspeed=1.0`;
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Referer": "https://translate.google.com/",
-        },
-      });
-
-      if (!response.ok) throw new Error(`gTTS 오류: ${response.status}`);
-      const buf = await response.arrayBuffer();
-      audioChunks.push(Buffer.from(buf));
-    }
-
-    res.setHeader("Content-Type", "audio/mpeg");
-    return res.send(Buffer.concat(audioChunks));
-  } catch (e) {
-    console.error("gTTS error:", e.message);
-
-    // 폴백: Edge TTS
+  if (apiKey) {
     try {
-      const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
-      const tts = new MsEdgeTTS();
-      await tts.setMetadata("ko-KR-JiMinNeural", OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-      const parts = [];
-      const { audioStream } = tts.toStream(text, { rate: 0.92, pitch: "+0Hz" });
-      audioStream.on("data", c => parts.push(c));
-      audioStream.on("close", () => {
-        res.setHeader("Content-Type", "audio/mpeg");
-        res.send(Buffer.concat(parts));
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1-hd",
+          input: text,
+          voice,
+          speed: 1.0,
+        }),
       });
-      audioStream.on("error", () => {
-        if (!res.headersSent) res.status(500).json({ error: "TTS 오류" });
-      });
-    } catch {
-      if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`OpenAI TTS 오류(${response.status}): ${err}`);
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", "audio/mpeg");
+      return res.send(Buffer.from(audioBuffer));
+    } catch (e) {
+      console.error("OpenAI TTS error:", e.message);
     }
+  }
+
+  // 폴백: Edge TTS
+  try {
+    const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata("ko-KR-JiMinNeural", OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const parts = [];
+    const { audioStream } = tts.toStream(text, { rate: 0.92, pitch: "+0Hz" });
+    audioStream.on("data", c => parts.push(c));
+    audioStream.on("close", () => {
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.send(Buffer.concat(parts));
+    });
+    audioStream.on("error", () => {
+      if (!res.headersSent) res.status(500).json({ error: "TTS 오류" });
+    });
+  } catch {
+    if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
   }
 });
 
