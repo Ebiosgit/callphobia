@@ -398,7 +398,7 @@ export default function VoiceCallTrainer({ onBack }) {
     currentAudioRef.current = null;
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
+      const timer = setTimeout(() => controller.abort(), 25000);
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -411,22 +411,14 @@ export default function VoiceCallTrainer({ onBack }) {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       currentAudioRef.current = audio;
-      // 오디오 재생 + 최대 30초 타임아웃
       await withTimeout(new Promise((resolve) => {
         audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
         audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
         audio.play().catch(resolve);
       }), 30000);
-    } catch {
-      // 폴백: 브라우저 TTS (최대 15초)
-      await withTimeout(new Promise((resolve) => {
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = "ko-KR";
-        utter.onend = resolve;
-        utter.onerror = resolve;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utter);
-      }), 15000);
+    } catch (e) {
+      console.warn("TTS 오류:", e.message);
+      // 서버 TTS 실패 시 그냥 다음으로 진행 (기계음 폴백 제거)
     }
   };
 
