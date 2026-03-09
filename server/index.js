@@ -27,13 +27,25 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// 레벨별 음성 설정 (rate: 숫자, pitch: Hz 문자열)
+// 레벨별 음성 설정
+// JiMinNeural(여성) / BongJinNeural(남성) — 최신 뉴럴 보이스, 더 자연스러운 발화
+// rate: 0.90~0.95 (느릴수록 사람 목소리에 가까움), pitch: 최소 조정
 const VOICE_MAP = {
-  "황금치킨 직원": { voice: "ko-KR-SunHiNeural",  rate: 1.05, pitch: "+5Hz"  },
-  "연세내과 접수":  { voice: "ko-KR-SunHiNeural",  rate: 1.0,  pitch: "+0Hz"  },
-  "주민센터 담당자":{ voice: "ko-KR-InJoonNeural", rate: 1.08, pitch: "-5Hz"  },
-  "고객센터 상담사":{ voice: "ko-KR-SunHiNeural",  rate: 1.03, pitch: "-3Hz"  },
-  default:          { voice: "ko-KR-SunHiNeural",  rate: 1.0,  pitch: "+0Hz"  },
+  // ── 여성 역할 ──────────────────────────────────────
+  "황금치킨 직원":   { voice: "ko-KR-JiMinNeural",   rate: 0.93, pitch: "+0Hz" },
+  "헤어샵 직원":     { voice: "ko-KR-JiMinNeural",   rate: 0.93, pitch: "+0Hz" },
+  "레스토랑 직원":   { voice: "ko-KR-JiMinNeural",   rate: 0.92, pitch: "+0Hz" },
+  "연세내과 접수":   { voice: "ko-KR-JiMinNeural",   rate: 0.90, pitch: "+0Hz" },
+  "호텔 프런트":     { voice: "ko-KR-JiMinNeural",   rate: 0.91, pitch: "+0Hz" },
+  "고객센터 상담사": { voice: "ko-KR-JiMinNeural",   rate: 0.92, pitch: "+0Hz" },
+  "은행 상담원":     { voice: "ko-KR-JiMinNeural",   rate: 0.90, pitch: "+0Hz" },
+  // ── 남성 역할 ──────────────────────────────────────
+  "택배 고객센터":   { voice: "ko-KR-BongJinNeural", rate: 0.94, pitch: "+0Hz" },
+  "삼성 서비스센터": { voice: "ko-KR-BongJinNeural", rate: 0.92, pitch: "+0Hz" },
+  "주민센터 담당자": { voice: "ko-KR-BongJinNeural", rate: 0.90, pitch: "+0Hz" },
+  "인사팀 담당자":   { voice: "ko-KR-BongJinNeural", rate: 0.93, pitch: "+0Hz" },
+  // ── 기본 ───────────────────────────────────────────
+  default:           { voice: "ko-KR-JiMinNeural",   rate: 0.92, pitch: "+0Hz" },
 };
 
 app.post("/api/script", async (req, res) => {
