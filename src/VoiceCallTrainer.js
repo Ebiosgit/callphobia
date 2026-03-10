@@ -619,7 +619,7 @@ export default function VoiceCallTrainer({ onBack }) {
 
   return (
     <div style={{
-      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100dvh",
+      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100vh",
       background: "#070B16", color: "white",
       opacity: mounted ? 1 : 0, transition: "opacity 0.4s ease"
     }}>
