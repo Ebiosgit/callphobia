@@ -497,16 +497,12 @@ export default function VoiceCallTrainer({ onBack }) {
         setTextMode(true);
       } else if (e.error === "network") {
         setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
-      } else if (e.error === "aborted" || e.error === "no-speech") {
-        // 정상적인 abort 또는 무발화 (무시)
       }
+      // aborted / no-speech 는 정상 케이스 — setVoiceState만 복원
       setVoiceState("idle");
     };
-    // 브라우저 내장 엔드포인터가 침묵 감지 시 즉시 UI 반영
-    rec.onspeechend = () => {
-      setInterimTranscript("");
-      setVoiceState("processing");
-    };
+    // onspeechend 제거: Android에서 onresult(final) 보다 먼저 실행돼
+    // accumulatedRef가 빈 채로 onend가 호출되는 버그 유발
     rec.onend = () => {
       if (isEndingRef.current) return;
       const said = accumulatedRef.current.trim();
