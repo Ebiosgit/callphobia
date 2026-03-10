@@ -322,13 +322,6 @@ export default function VoiceCallTrainer({ onBack }) {
   const [textMode, setTextMode] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [micError, setMicError] = useState("");
-  const [debugLogs, setDebugLogs] = useState([]);
-  const [showDebug, setShowDebug] = useState(false);
-
-  const addLog = (msg) => {
-    const time = new Date().toISOString().slice(11, 23);
-    setDebugLogs(prev => [...prev.slice(-30), `${time} ${msg}`]);
-  };
 
   // 핵심 refs — 클로저 문제 없이 항상 최신값
   const isEndingRef = useRef(false);
@@ -353,12 +346,13 @@ export default function VoiceCallTrainer({ onBack }) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
     if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) setSttSupported(false);
-    // iOS에서는 getUserMedia 사전 요청 금지:
-    // iOS Safari는 SpeechRecognition이 독립적인 권한을 가지므로
-    // 사용자 제스처 없이 호출하면 오히려 권한이 denied로 마킹될 수 있음
-    // Android Chrome만 사전 캐싱 시도
-    // 앱 로드 시 사전 권한 캐싱은 모바일 전체에서 제거
-    // (사용자 제스처 없는 getUserMedia는 모바일 브라우저에서 차단되거나 역효과)
+    // 마이크 권한 사전 요청: 이미 허용된 경우 팝업 없이 캐시 갱신
+    // 처음 방문 시 권한 캐싱 → 이후 SpeechRecognition 추가 팝업 방지
+    if (navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => stream.getTracks().forEach(t => t.stop()))
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -374,25 +368,15 @@ export default function VoiceCallTrainer({ onBack }) {
 
   const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  // 모바일 기기별 마이크 권한 안내 메시지
-  const getMicDeniedMessage = () => {
-    const ua = navigator.userAgent;
-    if (/iPad|iPhone|iPod/.test(ua))
-      return "iOS Safari: 설정 앱 → Safari → 마이크를 '허용'으로 변경해주세요. 텍스트 입력으로 진행할게요.";
-    if (/Android/.test(ua))
-      return "Chrome 주소창 왼쪽 자물쇠 아이콘 → 마이크 → 허용으로 변경해주세요. 텍스트 입력으로 진행할게요.";
-    return "마이크 권한이 거부됐어요. 브라우저 주소창에서 마이크 권한을 허용해주세요. 텍스트 입력으로 진행할게요.";
-  };
-
-  // ── 마이크 권한 사전 확보 ──────────────────────────────────
-  // 스트림을 열어두면 SpeechRecognition과 마이크 충돌 → 권한 확인 후 즉시 닫기
-  const primeAudioPermission = async () => {
+  // ── 마이크 스트림 관리 ────────────────────────────────────
+  // AudioContext 없이 스트림만 보관 → webkitSpeechRecognition과 충돌 방지
+  const startVolumeMonitor = async (existingStream = null) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop()); // 권한만 확인 후 즉시 해제
-    } catch (err) {
-      const isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
-      setMicError(isDenied ? getMicDeniedMessage() : "마이크를 사용할 수 없어요. 텍스트 입력으로 연습할 수 있어요.");
+      const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      // AudioContext 의도적으로 생략: UI에 볼륨 표시 없음 + SpeechRecognition 충돌 원인
+    } catch {
+      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
       setTextMode(true);
     }
   };
@@ -400,7 +384,6 @@ export default function VoiceCallTrainer({ onBack }) {
   const stopVolumeMonitor = () => {
     clearInterval(volumeIntervalRef.current);
     micStreamRef.current?.getTracks().forEach(t => t.stop());
-    micStreamRef.current = null;
   };
 
   // 타임아웃 유틸
@@ -475,7 +458,7 @@ export default function VoiceCallTrainer({ onBack }) {
   const handleMicPress = () => {
     if (isEndingRef.current || voiceState === "ai-speaking" || voiceState === "processing") return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { addLog("ERR: SpeechRecognition 미지원"); setTextMode(true); return; }
+    if (!SR) { setTextMode(true); return; }
     recognitionRef.current?.abort();
     const rec = new SR();
     rec.lang = "ko-KR";
@@ -484,15 +467,12 @@ export default function VoiceCallTrainer({ onBack }) {
     recognitionRef.current = rec;
     accumulatedRef.current = "";
     startTimeRef.current = Date.now();
-    addLog("STT start()");
-    rec.onstart = () => addLog("onstart OK");
     rec.onresult = (e) => {
       let interim = "", final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript;
         else interim += e.results[i][0].transcript;
       }
-      addLog(`onresult interim="${interim}" final="${final}"`);
       setInterimTranscript(interim);
       if (final) {
         accumulatedRef.current += (accumulatedRef.current ? " " : "") + final;
@@ -500,19 +480,20 @@ export default function VoiceCallTrainer({ onBack }) {
       }
     };
     rec.onerror = (e) => {
-      addLog(`onerror: ${e.error}`);
+      console.warn("SpeechRecognition error:", e.error);
       if (e.error === "not-allowed" || e.error === "permission-denied") {
-        setMicError(getMicDeniedMessage());
+        setMicError("마이크 권한이 거부됐어요. 텍스트 입력으로 전환할게요.");
         setTextMode(true);
       } else if (e.error === "network") {
         setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
+      } else if (e.error === "aborted") {
+        // 정상적인 abort (무시)
       }
       setVoiceState("idle");
     };
     rec.onend = () => {
-      const said = accumulatedRef.current.trim();
-      addLog(`onend said="${said}"`);
       if (isEndingRef.current) return;
+      const said = accumulatedRef.current.trim();
       setInterimTranscript("");
       setTranscript("");
       accumulatedRef.current = "";
@@ -525,7 +506,7 @@ export default function VoiceCallTrainer({ onBack }) {
       sendToAI(newHistory, levelRef.current);
     };
     setVoiceState("listening");
-    try { rec.start(); } catch (err) { addLog(`start() throw: ${err.message}`); setVoiceState("idle"); }
+    try { rec.start(); } catch { setVoiceState("idle"); }
   };
 
   const handleMicRelease = () => {
@@ -551,11 +532,16 @@ export default function VoiceCallTrainer({ onBack }) {
     setMessages([]); setCallDuration(0);
     setVoiceState("idle"); setTranscript("");
 
-    // Android: 권한만 사전 확보 후 즉시 스트림 닫기 (열어두면 SpeechRecognition 충돌)
-    // iOS: SpeechRecognition이 자체 권한 처리 → 불필요
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (!isIOS) {
-      await primeAudioPermission();
+    // 마이크 권한을 await로 확보한 뒤 스트림 공유
+    // → SpeechRecognition이 추가 팝업을 띄우지 않음
+    // → 권한 다이얼로그가 뜨는 동안 "연결 중" 화면 유지
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      startVolumeMonitor(stream);
+    } catch {
+      // 마이크 권한 거부 시 텍스트 모드로 폴백
+      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
+      setTextMode(true);
     }
 
     setTimeout(async () => {
@@ -931,17 +917,7 @@ export default function VoiceCallTrainer({ onBack }) {
             {micError && (
               <div style={{ marginBottom: "10px", padding: "8px 12px", background: "rgba(251,191,36,.1)", border: "1px solid rgba(251,191,36,.3)", borderRadius: "10px", fontSize: "11px", color: "#FCD34D", display: "flex", alignItems: "center", gap: "6px" }}>
                 ⚠️ {micError}
-                <button onClick={async () => {
-                  setMicError("");
-                  try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    stream.getTracks().forEach(t => t.stop());
-                    setTextMode(false);
-                  } catch (err) {
-                    const isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
-                    setMicError(isDenied ? getMicDeniedMessage() : "마이크를 사용할 수 없어요. 텍스트 입력으로 진행해주세요.");
-                  }
-                }} style={{ marginLeft: "auto", background: "none", border: "1px solid rgba(251,191,36,.4)", borderRadius: "6px", padding: "2px 8px", color: "#FCD34D", fontSize: "10px", cursor: "pointer", fontFamily: "inherit" }}>재시도</button>
+                <button onClick={() => { setTextMode(false); setMicError(""); }} style={{ marginLeft: "auto", background: "none", border: "1px solid rgba(251,191,36,.4)", borderRadius: "6px", padding: "2px 8px", color: "#FCD34D", fontSize: "10px", cursor: "pointer", fontFamily: "inherit" }}>재시도</button>
               </div>
             )}
 
@@ -985,21 +961,6 @@ export default function VoiceCallTrainer({ onBack }) {
               onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,.28)"}
               onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,.15)"}
             >📵 전화 끊기 & 피드백 보기</button>
-
-            {/* 디버그 패널 */}
-            <button onClick={() => setShowDebug(v => !v)} style={{ width: "100%", marginTop: "8px", padding: "6px", background: "transparent", border: "1px solid rgba(255,255,255,.1)", borderRadius: "10px", color: "#475569", fontSize: "11px", cursor: "pointer", fontFamily: "inherit" }}>
-              🔧 {showDebug ? "디버그 닫기" : "디버그 로그 보기"}
-            </button>
-            {showDebug && (
-              <div style={{ marginTop: "6px", background: "rgba(0,0,0,.7)", borderRadius: "10px", padding: "10px", maxHeight: "180px", overflowY: "auto" }}>
-                {debugLogs.length === 0
-                  ? <div style={{ color: "#475569", fontSize: "11px" }}>로그 없음 — 마이크 버튼을 눌러보세요</div>
-                  : debugLogs.map((log, i) => (
-                    <div key={i} style={{ fontSize: "10px", color: log.includes("ERR") || log.includes("onerror") ? "#F87171" : log.includes("onresult") ? "#34D399" : "#94A3B8", fontFamily: "monospace", lineHeight: "1.6" }}>{log}</div>
-                  ))
-                }
-              </div>
-            )}
           </div>
         </div>
       )}
