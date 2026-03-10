@@ -4,24 +4,6 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-// 모바일 에러 진단: 흰 화면 시 에러 메시지를 화면에 표시
-window.addEventListener('error', (e) => {
-  document.body.style.background = '#fff';
-  document.body.innerHTML =
-    `<pre style="color:red;padding:20px;font-size:13px;white-space:pre-wrap">
-ERROR: ${e.message}
-FILE: ${e.filename}
-LINE: ${e.lineno}
-    </pre>`;
-});
-
-window.addEventListener('unhandledrejection', (e) => {
-  document.body.style.background = '#fff';
-  document.body.innerHTML =
-    `<pre style="color:red;padding:20px;font-size:13px;white-space:pre-wrap">
-PROMISE ERROR: ${e.reason}
-    </pre>`;
-});
 
 class ErrorBoundary extends React.Component {
   state = { error: null };
