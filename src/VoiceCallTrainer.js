@@ -367,19 +367,6 @@ export default function VoiceCallTrainer({ onBack }) {
 
   const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  // ── 마이크 스트림 관리 ────────────────────────────────────
-  // AudioContext 없이 스트림만 보관 → webkitSpeechRecognition과 충돌 방지
-  const startVolumeMonitor = async (existingStream = null) => {
-    try {
-      const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-      // AudioContext 의도적으로 생략: UI에 볼륨 표시 없음 + SpeechRecognition 충돌 원인
-    } catch {
-      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
-      setTextMode(true);
-    }
-  };
-
   const stopVolumeMonitor = () => {
     clearInterval(volumeIntervalRef.current);
     micStreamRef.current?.getTracks().forEach(t => t.stop());
