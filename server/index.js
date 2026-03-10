@@ -284,7 +284,14 @@ app.post("/api/voice-feedback", async (req, res) => {
 
 // React 빌드 파일 서빙
 app.use(express.static(path.join(__dirname, "../build")));
+
+// SPA 클라이언트 라우팅: HTML 요청만 index.html로 보냄
+// 정적 파일(.js, .css, .map 등) 404는 그대로 404 반환
 app.get("*", (req, res) => {
+  const ext = path.extname(req.path);
+  if (ext && ext !== '.html') {
+    return res.status(404).end();
+  }
   res.sendFile(path.join(__dirname, "../build", "index.html"));
 });
 
