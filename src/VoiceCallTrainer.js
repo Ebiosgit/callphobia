@@ -408,7 +408,6 @@ export default function VoiceCallTrainer({ onBack }) {
 
   // ── AI 응답 ───────────────────────────────────────────────
   const sendToAI = async (history, lv) => {
-    isAiTalkingRef.current = true; // 음성 인식 결과 무시
     setVoiceState("processing");
     let aiText = "잠깐 연결이 불안정하네요.";
     try {
@@ -439,25 +438,28 @@ export default function VoiceCallTrainer({ onBack }) {
     if (!isEndingRef.current) startListeningLoop(lv, newHistory);
   };
 
-  // ── 자동 음성 인식 (절대 stop 안 함 → 권한 팝업 1회만) ────
-  // 핵심: .start()를 통화 중 딱 1번만 호출. .stop() 호출 안 함.
-  // AI가 말하는 동안에도 recognition은 계속 실행 중이고, 결과만 무시함.
-  const isAiTalkingRef = useRef(false);
+  // ── 탭 한 번 → 자동 듣기 → 3초 침묵 시 자동 전송 ────────
+  // 모바일: SpeechRecognition.start()는 반드시 사용자 제스처(탭) 안에서 호출해야 함
+  // AI 응답 후 "탭하여 말하기" 버튼 표시 → 탭 → 듣기 시작 → 자동 전송
 
-  const initAndStartRecognition = () => {
+  const handleTapToSpeak = () => {
+    if (isEndingRef.current || voiceState === "ai-speaking" || voiceState === "processing") return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setTextMode(true); return; }
-    if (recognitionRef.current) return; // 이미 실행 중
+
+    // 이전 인스턴스 정리
+    try { recognitionRef.current?.abort(); } catch {}
 
     const rec = new SR();
     rec.lang = "ko-KR";
     rec.continuous = true;
     rec.interimResults = true;
+    recognitionRef.current = rec;
+    accumulatedRef.current = "";
+    startTimeRef.current = Date.now();
 
     rec.onresult = (e) => {
-      // AI가 말하는 중이면 결과 무시
-      if (isAiTalkingRef.current || isEndingRef.current) return;
-
+      if (isEndingRef.current) return;
       let interim = "", final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript;
@@ -468,10 +470,10 @@ export default function VoiceCallTrainer({ onBack }) {
         accumulatedRef.current += (accumulatedRef.current ? " " : "") + final;
         setTranscript(accumulatedRef.current);
       }
-      // 말할 때마다 침묵 타이머 리셋
+      // 3초 침묵 시 자동 전송
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        if (isAiTalkingRef.current || isEndingRef.current) return;
+        if (isEndingRef.current) return;
         const said = accumulatedRef.current.trim();
         if (!said) return;
         const thinkTime = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
@@ -482,7 +484,7 @@ export default function VoiceCallTrainer({ onBack }) {
         const newHistory = [...historyRef.current, userMsg];
         historyRef.current = newHistory;
         setMessages(newHistory);
-        // recognition은 계속 실행 — stop 안 함!
+        try { rec.stop(); } catch {}
         sendToAI(newHistory, levelRef.current);
       }, 3000);
     };
@@ -493,41 +495,48 @@ export default function VoiceCallTrainer({ onBack }) {
         setMicError("마이크 권한이 거부됐어요. 텍스트 입력으로 전환할게요.");
         setTextMode(true);
       } else if (e.error === "network") {
-        setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
+        setMicError("음성 인식 네트워크 오류.");
       }
+      setVoiceState("idle");
     };
 
     rec.onend = () => {
-      // 브라우저가 끊으면 재시작하지 않음 (재시작 시 권한 팝업 반복됨)
-      // 대신 텍스트 입력으로 자동 전환
-      if (!isEndingRef.current) {
-        recognitionRef.current = null;
-        setTextMode(true);
+      if (isEndingRef.current) return;
+      // 누적 텍스트가 있으면 전송
+      const said = accumulatedRef.current.trim();
+      clearTimeout(silenceTimerRef.current);
+      setInterimTranscript("");
+      setTranscript("");
+      accumulatedRef.current = "";
+      recognitionRef.current = null;
+      if (said) {
+        const thinkTime = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+        const userMsg = { role: "user", content: said, time: Date.now(), thinkTime };
+        const newHistory = [...historyRef.current, userMsg];
+        historyRef.current = newHistory;
+        setMessages(newHistory);
+        sendToAI(newHistory, levelRef.current);
+      } else {
         setVoiceState("idle");
-        setMicError("음성 인식이 끊겼어요. 텍스트로 입력해주세요.");
       }
     };
 
-    recognitionRef.current = rec;
+    setVoiceState("listening");
     try { rec.start(); } catch { setVoiceState("idle"); }
   };
 
-  // AI 응답 후 듣기 상태로 전환 (recognition은 이미 실행 중)
+  // AI 응답 후 → idle 상태로 (탭 대기)
   const startListeningLoop = (lv, history) => {
     if (isEndingRef.current) return;
     levelRef.current = lv;
     historyRef.current = history;
-    isAiTalkingRef.current = false;
-    accumulatedRef.current = "";
-    startTimeRef.current = Date.now();
-    setVoiceState("listening");
+    setVoiceState("idle");
   };
 
   // ── 전화 시작/끝 ──────────────────────────────────────────
   const startCall = async (lv) => {
     isEndingRef.current = false;
     isListeningRef.current = false;
-    isAiTalkingRef.current = false;
     accumulatedRef.current = "";
     clearTimeout(silenceTimerRef.current);
     setLevel(lv); setIsConnecting(true);
@@ -537,8 +546,6 @@ export default function VoiceCallTrainer({ onBack }) {
     setTimeout(async () => {
       setIsConnecting(false);
       setScreen("calling");
-      // 음성 인식 딱 1번 시작 — 통화 끝날 때까지 유지
-      if (!textMode && sttSupported) initAndStartRecognition();
       const initHistory = [{ role: "user", content: "[CALL_START]", time: Date.now() }];
       historyRef.current = initHistory;
       await sendToAI(initHistory, lv);
@@ -854,31 +861,36 @@ export default function VoiceCallTrainer({ onBack }) {
 
           <div className="safe-area-bottom" style={{ padding: "16px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,.06)", background: "rgba(0,0,0,.4)" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "16px", gap: "12px" }}>
-              {/* 자동 듣기 상태 표시 */}
+              {/* 탭하여 말하기 / 상태 표시 */}
               {!textMode && sttSupported && (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                   <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {voiceState === "listening" && (
                       <div style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "2px solid #34D399", animation: "ripple 1s ease infinite" }} />
                     )}
-                    <div style={{
-                      width: "60px", height: "60px", borderRadius: "50%", border: "none",
-                      background: voiceState === "listening"
-                        ? "linear-gradient(135deg,#22C55E,#16A34A)"
-                        : voiceState === "ai-speaking" || voiceState === "processing"
-                        ? "rgba(255,255,255,.08)"
-                        : `linear-gradient(135deg,${col},${level?.darkColor || col})`,
-                      fontSize: "24px",
-                      boxShadow: voiceState === "listening" ? "0 0 24px rgba(34,197,94,.5)" : "none",
-                      transition: "all .2s ease",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {voiceState === "ai-speaking" ? "🔊" : voiceState === "processing" ? "⚙️" : voiceState === "listening" ? "🎙️" : "⏳"}
-                    </div>
+                    <button
+                      onClick={handleTapToSpeak}
+                      disabled={voiceState === "ai-speaking" || voiceState === "processing"}
+                      style={{
+                        width: "60px", height: "60px", borderRadius: "50%", border: "none",
+                        background: voiceState === "listening"
+                          ? "linear-gradient(135deg,#22C55E,#16A34A)"
+                          : voiceState === "ai-speaking" || voiceState === "processing"
+                          ? "rgba(255,255,255,.08)"
+                          : `linear-gradient(135deg,${col},${level?.darkColor || col})`,
+                        fontSize: "24px",
+                        boxShadow: voiceState === "listening" ? "0 0 24px rgba(34,197,94,.5)" : "none",
+                        transition: "all .2s ease",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: voiceState === "ai-speaking" || voiceState === "processing" ? "default" : "pointer",
+                        opacity: voiceState === "ai-speaking" || voiceState === "processing" ? 0.6 : 1,
+                      }}>
+                      {voiceState === "ai-speaking" ? "🔊" : voiceState === "processing" ? "⚙️" : voiceState === "listening" ? "🎙️" : "🎤"}
+                    </button>
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: "12px", fontWeight: "700", color: stateColor }}>
-                      {voiceState === "listening" ? "듣는 중… 3초 후 자동 전송" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "응답 생성 중…" : "준비 중…"}
+                      {voiceState === "listening" ? "듣는 중… 3초 후 자동 전송" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "응답 생성 중…" : "탭하여 말하기"}
                     </div>
                     {(transcript || interimTranscript) && (
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px", maxWidth: "260px", fontStyle: "italic" }}>
