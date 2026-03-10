@@ -475,6 +475,7 @@ export default function VoiceCallTrainer({ onBack }) {
 
     recorder.onstop = async () => {
       cancelAnimationFrame(silenceCheckRef.current);
+      clearTimeout(silenceTimerRef.current);
       recorderRef.current = null;
       if (isEndingRef.current) return;
 
@@ -520,7 +521,7 @@ export default function VoiceCallTrainer({ onBack }) {
     recorder.start(250);
     setVoiceState("listening");
     setTranscript("");
-    setInterimTranscript("말씀해주세요...");
+    setInterimTranscript("말씀해주세요... (다시 탭하면 전송)");
 
     // 침묵 감지: 음성 감지 후 2초 침묵 → 자동 전송
     let speechDetected = false;
@@ -532,10 +533,10 @@ export default function VoiceCallTrainer({ onBack }) {
         if (recorder.state !== "recording") return;
         analyser.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        if (avg > 8) {
+        if (avg > 3) { // 낮은 임계값 (모바일 마이크 감도 대응)
           speechDetected = true;
           silenceStart = null;
-          setInterimTranscript("듣는 중...");
+          setInterimTranscript("듣는 중... (다시 탭하면 전송)");
         } else if (speechDetected) {
           if (!silenceStart) silenceStart = Date.now();
           else if (Date.now() - silenceStart > 2000) { recorder.stop(); return; }
@@ -544,9 +545,14 @@ export default function VoiceCallTrainer({ onBack }) {
         silenceCheckRef.current = requestAnimationFrame(check);
       };
       silenceCheckRef.current = requestAnimationFrame(check);
-    } else {
-      setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 10000);
     }
+
+    // 폴백: 침묵 감지 실패 대비 — 7초 후 자동 전송
+    silenceTimerRef.current = setTimeout(() => {
+      if (recorder.state === "recording" && !speechDetected) {
+        recorder.stop();
+      }
+    }, 7000);
   };
 
   // AI 응답 후 → idle 상태로 (탭 대기)
@@ -573,13 +579,16 @@ export default function VoiceCallTrainer({ onBack }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // 모바일에서 AudioContext가 suspended 상태일 수 있으므로 명시적 resume
+      if (audioCtx.state === "suspended") await audioCtx.resume();
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 512;
       source.connect(analyser);
       audioCtxRef.current = audioCtx;
       analyserRef.current = analyser;
-    } catch {
+    } catch (err) {
+      console.warn("마이크 설정 실패:", err);
       setTextMode(true);
       setMicError("마이크를 사용할 수 없어요. 텍스트로 진행합니다.");
     }
