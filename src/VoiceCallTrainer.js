@@ -369,6 +369,16 @@ export default function VoiceCallTrainer({ onBack }) {
 
   const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+  // 모바일 기기별 마이크 권한 안내 메시지
+  const getMicDeniedMessage = () => {
+    const ua = navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua))
+      return "iOS Safari: 설정 앱 → Safari → 마이크를 '허용'으로 변경해주세요. 텍스트 입력으로 진행할게요.";
+    if (/Android/.test(ua))
+      return "Chrome 주소창 왼쪽 자물쇠 아이콘 → 마이크 → 허용으로 변경해주세요. 텍스트 입력으로 진행할게요.";
+    return "마이크 권한이 거부됐어요. 브라우저 주소창에서 마이크 권한을 허용해주세요. 텍스트 입력으로 진행할게요.";
+  };
+
   // ── 마이크 스트림 관리 ────────────────────────────────────
   // AudioContext 없이 스트림만 보관 → webkitSpeechRecognition과 충돌 방지
   const startVolumeMonitor = async (existingStream = null) => {
@@ -376,8 +386,9 @@ export default function VoiceCallTrainer({ onBack }) {
       const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
       // AudioContext 의도적으로 생략: UI에 볼륨 표시 없음 + SpeechRecognition 충돌 원인
-    } catch {
-      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
+    } catch (err) {
+      const isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
+      setMicError(isDenied ? getMicDeniedMessage() : "마이크를 사용할 수 없어요. 텍스트 입력으로 연습할 수 있어요.");
       setTextMode(true);
     }
   };
@@ -483,14 +494,19 @@ export default function VoiceCallTrainer({ onBack }) {
     rec.onerror = (e) => {
       console.warn("SpeechRecognition error:", e.error);
       if (e.error === "not-allowed" || e.error === "permission-denied") {
-        setMicError("마이크 권한이 거부됐어요. 텍스트 입력으로 전환할게요.");
+        setMicError(getMicDeniedMessage());
         setTextMode(true);
       } else if (e.error === "network") {
         setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
-      } else if (e.error === "aborted") {
-        // 정상적인 abort (무시)
+      } else if (e.error === "aborted" || e.error === "no-speech") {
+        // 정상적인 abort 또는 무발화 (무시)
       }
       setVoiceState("idle");
+    };
+    // 브라우저 내장 엔드포인터가 침묵 감지 시 즉시 UI 반영
+    rec.onspeechend = () => {
+      setInterimTranscript("");
+      setVoiceState("processing");
     };
     rec.onend = () => {
       if (isEndingRef.current) return;
@@ -539,9 +555,10 @@ export default function VoiceCallTrainer({ onBack }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       startVolumeMonitor(stream);
-    } catch {
+    } catch (err) {
       // 마이크 권한 거부 시 텍스트 모드로 폴백
-      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
+      const isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
+      setMicError(isDenied ? getMicDeniedMessage() : "마이크를 사용할 수 없어요. 텍스트 입력으로 연습할 수 있어요.");
       setTextMode(true);
     }
 
