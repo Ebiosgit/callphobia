@@ -421,11 +421,12 @@ export default function VoiceCallTrainer({ onBack }) {
 
   // ── AI 응답 ───────────────────────────────────────────────
   const sendToAI = async (history, lv) => {
+    isAiTalkingRef.current = true; // 음성 인식 결과 무시
     setVoiceState("processing");
     let aiText = "잠깐 연결이 불안정하네요.";
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000); // 20초 타임아웃
+      const timer = setTimeout(() => controller.abort(), 20000);
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -451,11 +452,15 @@ export default function VoiceCallTrainer({ onBack }) {
     if (!isEndingRef.current) startListeningLoop(lv, newHistory);
   };
 
-  // ── 자동 음성 인식 (단일 인스턴스 유지) ──────────────────
-  // SpeechRecognition을 한 번만 생성하고 계속 유지 → 권한 팝업 1회만 뜸
-  const initRecognition = (lv) => {
+  // ── 자동 음성 인식 (절대 stop 안 함 → 권한 팝업 1회만) ────
+  // 핵심: .start()를 통화 중 딱 1번만 호출. .stop() 호출 안 함.
+  // AI가 말하는 동안에도 recognition은 계속 실행 중이고, 결과만 무시함.
+  const isAiTalkingRef = useRef(false);
+
+  const initAndStartRecognition = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setTextMode(true); return null; }
+    if (!SR) { setTextMode(true); return; }
+    if (recognitionRef.current) return; // 이미 실행 중
 
     const rec = new SR();
     rec.lang = "ko-KR";
@@ -463,6 +468,9 @@ export default function VoiceCallTrainer({ onBack }) {
     rec.interimResults = true;
 
     rec.onresult = (e) => {
+      // AI가 말하는 중이면 결과 무시
+      if (isAiTalkingRef.current || isEndingRef.current) return;
+
       let interim = "", final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript;
@@ -476,9 +484,9 @@ export default function VoiceCallTrainer({ onBack }) {
       // 말할 때마다 침묵 타이머 리셋
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        // 3초 침묵 → 누적된 텍스트 전송
+        if (isAiTalkingRef.current || isEndingRef.current) return;
         const said = accumulatedRef.current.trim();
-        if (!said || isEndingRef.current) return;
+        if (!said) return;
         const thinkTime = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
         const userMsg = { role: "user", content: said, time: Date.now(), thinkTime };
         accumulatedRef.current = "";
@@ -487,8 +495,7 @@ export default function VoiceCallTrainer({ onBack }) {
         const newHistory = [...historyRef.current, userMsg];
         historyRef.current = newHistory;
         setMessages(newHistory);
-        // 듣기 일시정지 → AI 응답
-        try { rec.stop(); } catch {}
+        // recognition은 계속 실행 — stop 안 함!
         sendToAI(newHistory, levelRef.current);
       }, 3000);
     };
@@ -504,67 +511,47 @@ export default function VoiceCallTrainer({ onBack }) {
     };
 
     rec.onend = () => {
-      // 통화 중이면 자동 재시작 (권한은 이미 허용됨 → 팝업 안 뜸)
-      if (!isEndingRef.current && !textMode) {
-        // AI가 말하는 중이면 끝날 때까지 대기 (startListeningLoop에서 재시작)
-        if (voiceStateRef.current !== "ai-speaking" && voiceStateRef.current !== "processing") {
-          try { rec.start(); } catch {}
-        }
+      // 브라우저가 강제로 끊은 경우에만 재시작 (통화 중일 때)
+      if (!isEndingRef.current) {
+        setTimeout(() => {
+          if (!isEndingRef.current && recognitionRef.current) {
+            try { recognitionRef.current.start(); } catch {}
+          }
+        }, 500);
       }
     };
 
-    return rec;
-  };
-
-  // voiceState를 ref로도 추적 (onend 콜백에서 최신값 접근용)
-  const voiceStateRef = useRef(voiceState);
-  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
-
-  const startAutoListen = (lv) => {
-    if (isEndingRef.current || textMode || !sttSupported) { setVoiceState("idle"); return; }
-    accumulatedRef.current = "";
-    startTimeRef.current = Date.now();
-    setVoiceState("listening");
-    clearTimeout(silenceTimerRef.current);
-    // 기존 인스턴스가 있으면 재사용
-    if (recognitionRef.current) {
-      try { recognitionRef.current.start(); } catch {}
-      return;
-    }
-    const rec = initRecognition(lv);
-    if (!rec) return;
     recognitionRef.current = rec;
     try { rec.start(); } catch { setVoiceState("idle"); }
   };
 
-  // AI 응답 후 자동으로 듣기 시작
+  // AI 응답 후 듣기 상태로 전환 (recognition은 이미 실행 중)
   const startListeningLoop = (lv, history) => {
     if (isEndingRef.current) return;
     levelRef.current = lv;
     historyRef.current = history;
-    startAutoListen(lv);
+    isAiTalkingRef.current = false;
+    accumulatedRef.current = "";
+    startTimeRef.current = Date.now();
+    setVoiceState("listening");
   };
 
   // ── 전화 시작/끝 ──────────────────────────────────────────
   const startCall = async (lv) => {
     isEndingRef.current = false;
     isListeningRef.current = false;
+    isAiTalkingRef.current = false;
     accumulatedRef.current = "";
     clearTimeout(silenceTimerRef.current);
     setLevel(lv); setIsConnecting(true);
     setMessages([]); setCallDuration(0);
     setVoiceState("idle"); setTranscript("");
 
-    // SpeechRecognition을 미리 생성 → 연결 중 화면에서 권한 1회 요청
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SR && !recognitionRef.current) {
-      const rec = initRecognition(lv);
-      if (rec) recognitionRef.current = rec;
-    }
-
     setTimeout(async () => {
       setIsConnecting(false);
       setScreen("calling");
+      // 음성 인식 딱 1번 시작 — 통화 끝날 때까지 유지
+      if (!textMode && sttSupported) initAndStartRecognition();
       const initHistory = [{ role: "user", content: "[CALL_START]", time: Date.now() }];
       historyRef.current = initHistory;
       await sendToAI(initHistory, lv);
