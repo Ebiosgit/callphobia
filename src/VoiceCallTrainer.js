@@ -351,12 +351,8 @@ export default function VoiceCallTrainer({ onBack }) {
     // iOS Safari는 SpeechRecognition이 독립적인 권한을 가지므로
     // 사용자 제스처 없이 호출하면 오히려 권한이 denied로 마킹될 수 있음
     // Android Chrome만 사전 캐싱 시도
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (!isIOS && navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => stream.getTracks().forEach(t => t.stop()))
-        .catch(() => {});
-    }
+    // 앱 로드 시 사전 권한 캐싱은 모바일 전체에서 제거
+    // (사용자 제스처 없는 getUserMedia는 모바일 브라우저에서 차단되거나 역효과)
   }, []);
 
   useEffect(() => {
@@ -382,13 +378,12 @@ export default function VoiceCallTrainer({ onBack }) {
     return "마이크 권한이 거부됐어요. 브라우저 주소창에서 마이크 권한을 허용해주세요. 텍스트 입력으로 진행할게요.";
   };
 
-  // ── 마이크 스트림 관리 ────────────────────────────────────
-  // AudioContext 없이 스트림만 보관 → webkitSpeechRecognition과 충돌 방지
-  const startVolumeMonitor = async (existingStream = null) => {
+  // ── 마이크 권한 사전 확보 ──────────────────────────────────
+  // 스트림을 열어두면 SpeechRecognition과 마이크 충돌 → 권한 확인 후 즉시 닫기
+  const primeAudioPermission = async () => {
     try {
-      const stream = existingStream || await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-      // AudioContext 의도적으로 생략: UI에 볼륨 표시 없음 + SpeechRecognition 충돌 원인
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop()); // 권한만 확인 후 즉시 해제
     } catch (err) {
       const isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
       setMicError(isDenied ? getMicDeniedMessage() : "마이크를 사용할 수 없어요. 텍스트 입력으로 연습할 수 있어요.");
@@ -399,6 +394,7 @@ export default function VoiceCallTrainer({ onBack }) {
   const stopVolumeMonitor = () => {
     clearInterval(volumeIntervalRef.current);
     micStreamRef.current?.getTracks().forEach(t => t.stop());
+    micStreamRef.current = null;
   };
 
   // 타임아웃 유틸
@@ -552,18 +548,11 @@ export default function VoiceCallTrainer({ onBack }) {
     setMessages([]); setCallDuration(0);
     setVoiceState("idle"); setTranscript("");
 
-    // iOS: SpeechRecognition이 자체 권한 처리 → getUserMedia 불필요
-    // Android: getUserMedia 사전 확보 → SpeechRecognition 추가 팝업 방지
+    // Android: 권한만 사전 확보 후 즉시 스트림 닫기 (열어두면 SpeechRecognition 충돌)
+    // iOS: SpeechRecognition이 자체 권한 처리 → 불필요
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     if (!isIOS) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        startVolumeMonitor(stream);
-      } catch (err) {
-        const isDenied = err.name === "NotAllowedError" || err.name === "PermissionDeniedError";
-        setMicError(isDenied ? getMicDeniedMessage() : "마이크를 사용할 수 없어요. 텍스트 입력으로 연습할 수 있어요.");
-        setTextMode(true);
-      }
+      await primeAudioPermission();
     }
 
     setTimeout(async () => {
