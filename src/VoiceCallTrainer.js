@@ -331,14 +331,18 @@ export default function VoiceCallTrainer({ onBack }) {
 
   // 핵심 refs — 클로저 문제 없이 항상 최신값
   const isEndingRef = useRef(false);
-  const isListeningRef = useRef(false); // STT 루프 중복 방지
+  const isListeningRef = useRef(false);
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
-  const accumulatedRef = useRef(""); // 누적 텍스트
+  const accumulatedRef = useRef("");
   const startTimeRef = useRef(null);
   const historyRef = useRef([]);
   const levelRef = useRef(null);
   const timerRef = useRef(null);
+  const recorderRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const silenceCheckRef = useRef(null);
   const messagesEndRef = useRef(null);
   const volumeIntervalRef = useRef(null);
   const micStreamRef = useRef(null);
@@ -351,7 +355,7 @@ export default function VoiceCallTrainer({ onBack }) {
     link.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap";
     link.rel = "stylesheet";
     document.head.appendChild(link);
-    if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) setSttSupported(false);
+    if (!("MediaRecorder" in window) || !navigator.mediaDevices?.getUserMedia) setSttSupported(false);
   }, []);
 
   useEffect(() => {
@@ -438,79 +442,110 @@ export default function VoiceCallTrainer({ onBack }) {
     if (!isEndingRef.current) startListeningLoop(lv, newHistory);
   };
 
-  // ── 탭 한 번 → 듣기 → 발화 끝나면 자동 전송 ────────
-  // 모바일 호환: continuous: false (단일 발화), getUserMedia로 권한 사전 확보
+  // ── 탭 → MediaRecorder 녹음 → 서버 STT → AI 전송 ────────
+  // SpeechRecognition 대신 MediaRecorder 사용 (권한 팝업 1회만)
   const handleTapToSpeak = () => {
     if (isEndingRef.current || voiceState === "ai-speaking" || voiceState === "processing") return;
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setTextMode(true); return; }
 
-    try { recognitionRef.current?.abort(); } catch {}
+    const stream = micStreamRef.current;
+    if (!stream || !stream.active) {
+      setTextMode(true);
+      setMicError("마이크가 연결되지 않았어요. 텍스트로 입력해주세요.");
+      return;
+    }
 
-    const rec = new SR();
-    rec.lang = "ko-KR";
-    rec.continuous = false;      // 모바일 호환: 단일 발화 모드
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    recognitionRef.current = rec;
-    accumulatedRef.current = "";
+    // 녹음 중이면 탭으로 즉시 전송
+    if (voiceState === "listening" && recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      return;
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
+
+    const recorder = new MediaRecorder(stream, { mimeType });
+    const chunks = [];
+    recorderRef.current = recorder;
     startTimeRef.current = Date.now();
 
-    rec.onresult = (e) => {
-      if (isEndingRef.current) return;
-      let interim = "", final = "";
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      setInterimTranscript(interim);
-      if (final) {
-        accumulatedRef.current = final;
-        setTranscript(final);
-      }
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
     };
 
-    rec.onerror = (e) => {
-      console.warn("SpeechRecognition error:", e.error);
-      if (e.error === "not-allowed" || e.error === "permission-denied") {
-        setMicError("마이크 권한이 거부됐어요. 텍스트로 입력해주세요.");
-        setTextMode(true);
-      } else if (e.error === "network") {
-        setMicError("음성 인식 네트워크 오류. 텍스트로 입력해주세요.");
-        setTextMode(true);
-      } else if (e.error !== "aborted" && e.error !== "no-speech") {
-        setMicError(`음성 인식 오류: ${e.error}`);
-      }
-      setVoiceState("idle");
-    };
-
-    // continuous: false이므로 발화 끝나면 자동으로 onend 호출
-    rec.onend = () => {
+    recorder.onstop = async () => {
+      cancelAnimationFrame(silenceCheckRef.current);
+      recorderRef.current = null;
       if (isEndingRef.current) return;
-      const said = accumulatedRef.current.trim();
+
+      const blob = new Blob(chunks, { type: mimeType });
+      if (blob.size < 500) { setVoiceState("idle"); return; }
+
+      setVoiceState("processing");
       setInterimTranscript("");
       setTranscript("");
-      accumulatedRef.current = "";
-      recognitionRef.current = null;
-      if (said) {
+
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const res = await fetch("/api/stt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audio: base64, mimeType }),
+        });
+        const data = await res.json();
+        const text = data.text?.trim();
+
+        if (!text) { setVoiceState("idle"); return; }
+
         const thinkTime = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
-        const userMsg = { role: "user", content: said, time: Date.now(), thinkTime };
+        const userMsg = { role: "user", content: text, time: Date.now(), thinkTime };
         const newHistory = [...historyRef.current, userMsg];
         historyRef.current = newHistory;
         setMessages(newHistory);
         sendToAI(newHistory, levelRef.current);
-      } else {
-        // 아무 말도 못 감지 → idle로 돌아가서 다시 탭 가능
+      } catch (e) {
+        console.error("STT error:", e);
+        setMicError("음성 인식에 실패했어요. 텍스트로 입력해주세요.");
+        setTextMode(true);
         setVoiceState("idle");
       }
     };
 
+    recorder.start(250);
     setVoiceState("listening");
-    try { rec.start(); } catch (err) {
-      console.warn("rec.start() failed:", err);
-      setVoiceState("idle");
-      setTextMode(true);
-      setMicError("음성 인식을 시작할 수 없어요. 텍스트로 입력해주세요.");
+    setTranscript("");
+    setInterimTranscript("말씀해주세요...");
+
+    // 침묵 감지: 음성 감지 후 2초 침묵 → 자동 전송
+    let speechDetected = false;
+    let silenceStart = null;
+    const analyser = analyserRef.current;
+    if (analyser) {
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const check = () => {
+        if (recorder.state !== "recording") return;
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        if (avg > 8) {
+          speechDetected = true;
+          silenceStart = null;
+          setInterimTranscript("듣는 중...");
+        } else if (speechDetected) {
+          if (!silenceStart) silenceStart = Date.now();
+          else if (Date.now() - silenceStart > 2000) { recorder.stop(); return; }
+        }
+        if (Date.now() - startTimeRef.current > 30000) { recorder.stop(); return; }
+        silenceCheckRef.current = requestAnimationFrame(check);
+      };
+      silenceCheckRef.current = requestAnimationFrame(check);
+    } else {
+      setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, 10000);
     }
   };
 
@@ -533,11 +568,17 @@ export default function VoiceCallTrainer({ onBack }) {
     setVoiceState("idle"); setTranscript("");
     setTextMode(false); setMicError("");
 
-    // 마이크 권한을 미리 확보 (한 번만 팝업)
-    // → 이후 SpeechRecognition이 같은 권한을 재사용
+    // 마이크 권한 1회 확보 + 침묵 감지용 AudioContext 설정
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      audioCtxRef.current = audioCtx;
+      analyserRef.current = analyser;
     } catch {
       setTextMode(true);
       setMicError("마이크를 사용할 수 없어요. 텍스트로 진행합니다.");
@@ -556,14 +597,19 @@ export default function VoiceCallTrainer({ onBack }) {
     isEndingRef.current = true;
     isListeningRef.current = false;
     clearTimeout(silenceTimerRef.current);
+    cancelAnimationFrame(silenceCheckRef.current);
     currentAudioRef.current?.pause();
     currentAudioRef.current = null;
     try { recognitionRef.current?.abort(); } catch {}
     recognitionRef.current = null;
+    try { if (recorderRef.current?.state === "recording") recorderRef.current.stop(); } catch {}
+    recorderRef.current = null;
     window.speechSynthesis?.cancel();
     clearInterval(timerRef.current);
     stopVolumeMonitor();
-    // 마이크 스트림 해제
+    try { audioCtxRef.current?.close(); } catch {}
+    audioCtxRef.current = null;
+    analyserRef.current = null;
     micStreamRef.current?.getTracks().forEach(t => t.stop());
     micStreamRef.current = null;
     setVoiceState("idle");
@@ -893,7 +939,7 @@ export default function VoiceCallTrainer({ onBack }) {
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: "12px", fontWeight: "700", color: stateColor }}>
-                      {voiceState === "listening" ? "듣는 중… 3초 후 자동 전송" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "응답 생성 중…" : "탭하여 말하기"}
+                      {voiceState === "listening" ? "녹음 중… 멈추면 자동 전송 (탭하면 즉시 전송)" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "음성 인식 중…" : "탭하여 말하기"}
                     </div>
                     {(transcript || interimTranscript) && (
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px", maxWidth: "260px", fontStyle: "italic" }}>

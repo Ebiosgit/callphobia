@@ -6,7 +6,7 @@ const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -226,6 +226,43 @@ app.post("/api/tts", async (req, res) => {
     });
   } catch {
     if (!res.headersSent) res.status(500).json({ error: "TTS 생성 오류가 발생했습니다." });
+  }
+});
+
+// STT: 클라이언트에서 녹음한 오디오 → ElevenLabs Speech-to-Text
+app.post("/api/stt", async (req, res) => {
+  const { audio, mimeType } = req.body;
+  if (!audio) return res.status(400).json({ error: "오디오 데이터가 없습니다." });
+
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "STT를 사용할 수 없습니다." });
+
+  try {
+    const audioBuffer = Buffer.from(audio, "base64");
+    const ext = mimeType?.includes("mp4") ? "mp4" : "webm";
+    const blob = new Blob([audioBuffer], { type: mimeType || "audio/webm" });
+
+    const formData = new FormData();
+    formData.append("file", blob, `audio.${ext}`);
+    formData.append("model_id", "scribe_v1");
+    formData.append("language_code", "ko");
+
+    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      method: "POST",
+      headers: { "xi-api-key": apiKey },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`ElevenLabs STT ${response.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const data = await response.json();
+    res.json({ text: data.text || "" });
+  } catch (e) {
+    console.error("STT error:", e.message);
+    res.status(500).json({ error: "음성 인식 실패" });
   }
 });
 
