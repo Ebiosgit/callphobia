@@ -511,13 +511,13 @@ export default function VoiceCallTrainer({ onBack }) {
     };
 
     rec.onend = () => {
-      // 브라우저가 강제로 끊은 경우에만 재시작 (통화 중일 때)
+      // 브라우저가 끊으면 재시작하지 않음 (재시작 시 권한 팝업 반복됨)
+      // 대신 텍스트 입력으로 자동 전환
       if (!isEndingRef.current) {
-        setTimeout(() => {
-          if (!isEndingRef.current && recognitionRef.current) {
-            try { recognitionRef.current.start(); } catch {}
-          }
-        }, 500);
+        recognitionRef.current = null;
+        setTextMode(true);
+        setVoiceState("idle");
+        setMicError("음성 인식이 끊겼어요. 텍스트로 입력해주세요.");
       }
     };
 
