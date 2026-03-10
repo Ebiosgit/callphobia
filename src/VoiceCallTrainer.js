@@ -322,6 +322,13 @@ export default function VoiceCallTrainer({ onBack }) {
   const [textMode, setTextMode] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [micError, setMicError] = useState("");
+  const [debugLogs, setDebugLogs] = useState([]);
+  const [showDebug, setShowDebug] = useState(false);
+
+  const addLog = (msg) => {
+    const time = new Date().toISOString().slice(11, 23);
+    setDebugLogs(prev => [...prev.slice(-30), `${time} ${msg}`]);
+  };
 
   // 핵심 refs — 클로저 문제 없이 항상 최신값
   const isEndingRef = useRef(false);
@@ -469,7 +476,7 @@ export default function VoiceCallTrainer({ onBack }) {
   const handleMicPress = () => {
     if (isEndingRef.current || voiceState === "ai-speaking" || voiceState === "processing") return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setTextMode(true); return; }
+    if (!SR) { addLog("ERR: SpeechRecognition 미지원"); setTextMode(true); return; }
     recognitionRef.current?.abort();
     const rec = new SR();
     rec.lang = "ko-KR";
@@ -478,12 +485,15 @@ export default function VoiceCallTrainer({ onBack }) {
     recognitionRef.current = rec;
     accumulatedRef.current = "";
     startTimeRef.current = Date.now();
+    addLog("STT start()");
+    rec.onstart = () => addLog("onstart OK");
     rec.onresult = (e) => {
       let interim = "", final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) final += e.results[i][0].transcript;
         else interim += e.results[i][0].transcript;
       }
+      addLog(`onresult interim="${interim}" final="${final}"`);
       setInterimTranscript(interim);
       if (final) {
         accumulatedRef.current += (accumulatedRef.current ? " " : "") + final;
@@ -491,21 +501,19 @@ export default function VoiceCallTrainer({ onBack }) {
       }
     };
     rec.onerror = (e) => {
-      console.warn("SpeechRecognition error:", e.error);
+      addLog(`onerror: ${e.error}`);
       if (e.error === "not-allowed" || e.error === "permission-denied") {
         setMicError(getMicDeniedMessage());
         setTextMode(true);
       } else if (e.error === "network") {
         setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
       }
-      // aborted / no-speech 는 정상 케이스 — setVoiceState만 복원
       setVoiceState("idle");
     };
-    // onspeechend 제거: Android에서 onresult(final) 보다 먼저 실행돼
-    // accumulatedRef가 빈 채로 onend가 호출되는 버그 유발
     rec.onend = () => {
-      if (isEndingRef.current) return;
       const said = accumulatedRef.current.trim();
+      addLog(`onend said="${said}"`);
+      if (isEndingRef.current) return;
       setInterimTranscript("");
       setTranscript("");
       accumulatedRef.current = "";
@@ -518,7 +526,7 @@ export default function VoiceCallTrainer({ onBack }) {
       sendToAI(newHistory, levelRef.current);
     };
     setVoiceState("listening");
-    try { rec.start(); } catch { setVoiceState("idle"); }
+    try { rec.start(); } catch (err) { addLog(`start() throw: ${err.message}`); setVoiceState("idle"); }
   };
 
   const handleMicRelease = () => {
@@ -978,6 +986,21 @@ export default function VoiceCallTrainer({ onBack }) {
               onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,.28)"}
               onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,.15)"}
             >📵 전화 끊기 & 피드백 보기</button>
+
+            {/* 디버그 패널 */}
+            <button onClick={() => setShowDebug(v => !v)} style={{ width: "100%", marginTop: "8px", padding: "6px", background: "transparent", border: "1px solid rgba(255,255,255,.1)", borderRadius: "10px", color: "#475569", fontSize: "11px", cursor: "pointer", fontFamily: "inherit" }}>
+              🔧 {showDebug ? "디버그 닫기" : "디버그 로그 보기"}
+            </button>
+            {showDebug && (
+              <div style={{ marginTop: "6px", background: "rgba(0,0,0,.7)", borderRadius: "10px", padding: "10px", maxHeight: "180px", overflowY: "auto" }}>
+                {debugLogs.length === 0
+                  ? <div style={{ color: "#475569", fontSize: "11px" }}>로그 없음 — 마이크 버튼을 눌러보세요</div>
+                  : debugLogs.map((log, i) => (
+                    <div key={i} style={{ fontSize: "10px", color: log.includes("ERR") || log.includes("onerror") ? "#F87171" : log.includes("onresult") ? "#34D399" : "#94A3B8", fontFamily: "monospace", lineHeight: "1.6" }}>{log}</div>
+                  ))
+                }
+              </div>
+            )}
           </div>
         </div>
       )}
