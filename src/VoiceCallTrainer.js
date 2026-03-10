@@ -352,13 +352,6 @@ export default function VoiceCallTrainer({ onBack }) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
     if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) setSttSupported(false);
-    // 마이크 권한 사전 요청: 이미 허용된 경우 팝업 없이 캐시 갱신
-    // 처음 방문 시 권한 캐싱 → 이후 SpeechRecognition 추가 팝업 방지
-    if (navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => stream.getTracks().forEach(t => t.stop()))
-        .catch(() => {});
-    }
   }, []);
 
   useEffect(() => {
@@ -458,32 +451,16 @@ export default function VoiceCallTrainer({ onBack }) {
     if (!isEndingRef.current) startListeningLoop(lv, newHistory);
   };
 
-  // ── 자동 음성 인식 ───────────────────────────────────────
-  const startAutoListen = (lv, history) => {
-    if (isEndingRef.current) return;
-    if (textMode || !sttSupported) { setVoiceState("idle"); return; }
+  // ── 자동 음성 인식 (단일 인스턴스 유지) ──────────────────
+  // SpeechRecognition을 한 번만 생성하고 계속 유지 → 권한 팝업 1회만 뜸
+  const initRecognition = (lv) => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { setTextMode(true); return; }
+    if (!SR) { setTextMode(true); return null; }
 
-    recognitionRef.current?.abort();
     const rec = new SR();
     rec.lang = "ko-KR";
     rec.continuous = true;
     rec.interimResults = true;
-    recognitionRef.current = rec;
-    accumulatedRef.current = "";
-    startTimeRef.current = Date.now();
-    levelRef.current = lv;
-    historyRef.current = history;
-
-    // 3초간 말이 없으면 자동 전송
-    let silenceTimer = null;
-    const resetSilence = () => {
-      clearTimeout(silenceTimer);
-      silenceTimer = setTimeout(() => {
-        rec.stop();
-      }, 3000);
-    };
 
     rec.onresult = (e) => {
       let interim = "", final = "";
@@ -496,47 +473,67 @@ export default function VoiceCallTrainer({ onBack }) {
         accumulatedRef.current += (accumulatedRef.current ? " " : "") + final;
         setTranscript(accumulatedRef.current);
       }
-      resetSilence();
+      // 말할 때마다 침묵 타이머 리셋
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        // 3초 침묵 → 누적된 텍스트 전송
+        const said = accumulatedRef.current.trim();
+        if (!said || isEndingRef.current) return;
+        const thinkTime = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+        const userMsg = { role: "user", content: said, time: Date.now(), thinkTime };
+        accumulatedRef.current = "";
+        setTranscript("");
+        setInterimTranscript("");
+        const newHistory = [...historyRef.current, userMsg];
+        historyRef.current = newHistory;
+        setMessages(newHistory);
+        // 듣기 일시정지 → AI 응답
+        try { rec.stop(); } catch {}
+        sendToAI(newHistory, levelRef.current);
+      }, 3000);
     };
 
     rec.onerror = (e) => {
       console.warn("SpeechRecognition error:", e.error);
-      clearTimeout(silenceTimer);
       if (e.error === "not-allowed" || e.error === "permission-denied") {
         setMicError("마이크 권한이 거부됐어요. 텍스트 입력으로 전환할게요.");
         setTextMode(true);
       } else if (e.error === "network") {
         setMicError("음성 인식 네트워크 오류. 인터넷 연결을 확인해주세요.");
-      } else if (e.error === "aborted") {
-        // 정상적인 abort (무시)
       }
-      setVoiceState("idle");
     };
 
     rec.onend = () => {
-      clearTimeout(silenceTimer);
-      if (isEndingRef.current) return;
-      const said = accumulatedRef.current.trim();
-      setInterimTranscript("");
-      setTranscript("");
-      accumulatedRef.current = "";
-      if (!said) {
-        // 아무 말도 없으면 다시 듣기
-        if (!isEndingRef.current && !textMode) {
-          setTimeout(() => startAutoListen(levelRef.current, historyRef.current), 300);
+      // 통화 중이면 자동 재시작 (권한은 이미 허용됨 → 팝업 안 뜸)
+      if (!isEndingRef.current && !textMode) {
+        // AI가 말하는 중이면 끝날 때까지 대기 (startListeningLoop에서 재시작)
+        if (voiceStateRef.current !== "ai-speaking" && voiceStateRef.current !== "processing") {
+          try { rec.start(); } catch {}
         }
-        return;
       }
-      const thinkTime = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
-      const userMsg = { role: "user", content: said, time: Date.now(), thinkTime };
-      const newHistory = [...historyRef.current, userMsg];
-      historyRef.current = newHistory;
-      setMessages(newHistory);
-      sendToAI(newHistory, levelRef.current);
     };
 
+    return rec;
+  };
+
+  // voiceState를 ref로도 추적 (onend 콜백에서 최신값 접근용)
+  const voiceStateRef = useRef(voiceState);
+  useEffect(() => { voiceStateRef.current = voiceState; }, [voiceState]);
+
+  const startAutoListen = (lv) => {
+    if (isEndingRef.current || textMode || !sttSupported) { setVoiceState("idle"); return; }
+    accumulatedRef.current = "";
+    startTimeRef.current = Date.now();
     setVoiceState("listening");
-    resetSilence();
+    clearTimeout(silenceTimerRef.current);
+    // 기존 인스턴스가 있으면 재사용
+    if (recognitionRef.current) {
+      try { recognitionRef.current.start(); } catch {}
+      return;
+    }
+    const rec = initRecognition(lv);
+    if (!rec) return;
+    recognitionRef.current = rec;
     try { rec.start(); } catch { setVoiceState("idle"); }
   };
 
@@ -545,7 +542,7 @@ export default function VoiceCallTrainer({ onBack }) {
     if (isEndingRef.current) return;
     levelRef.current = lv;
     historyRef.current = history;
-    startAutoListen(lv, history);
+    startAutoListen(lv);
   };
 
   // ── 전화 시작/끝 ──────────────────────────────────────────
@@ -558,16 +555,11 @@ export default function VoiceCallTrainer({ onBack }) {
     setMessages([]); setCallDuration(0);
     setVoiceState("idle"); setTranscript("");
 
-    // 마이크 권한을 await로 확보한 뒤 스트림 공유
-    // → SpeechRecognition이 추가 팝업을 띄우지 않음
-    // → 권한 다이얼로그가 뜨는 동안 "연결 중" 화면 유지
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      startVolumeMonitor(stream);
-    } catch {
-      // 마이크 권한 거부 시 텍스트 모드로 폴백
-      setMicError("마이크 권한이 없어요. 텍스트 입력으로 연습할 수 있어요.");
-      setTextMode(true);
+    // SpeechRecognition을 미리 생성 → 연결 중 화면에서 권한 1회 요청
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR && !recognitionRef.current) {
+      const rec = initRecognition(lv);
+      if (rec) recognitionRef.current = rec;
     }
 
     setTimeout(async () => {
@@ -585,7 +577,8 @@ export default function VoiceCallTrainer({ onBack }) {
     clearTimeout(silenceTimerRef.current);
     currentAudioRef.current?.pause();
     currentAudioRef.current = null;
-    recognitionRef.current?.abort();
+    try { recognitionRef.current?.abort(); } catch {}
+    recognitionRef.current = null; // 인스턴스 해제 → 다음 통화에서 새로 생성
     window.speechSynthesis?.cancel();
     clearInterval(timerRef.current);
     stopVolumeMonitor();
