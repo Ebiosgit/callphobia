@@ -547,12 +547,10 @@ export default function VoiceCallTrainer({ onBack }) {
       silenceCheckRef.current = requestAnimationFrame(check);
     }
 
-    // 폴백: 침묵 감지 실패 대비 — 7초 후 자동 전송
+    // 최대 녹음 시간 8초 — 침묵 감지 실패해도 무조건 전송
     silenceTimerRef.current = setTimeout(() => {
-      if (recorder.state === "recording" && !speechDetected) {
-        recorder.stop();
-      }
-    }, 7000);
+      if (recorder.state === "recording") recorder.stop();
+    }, 8000);
   };
 
   // AI 응답 후 → idle 상태로 (탭 대기)
@@ -924,7 +922,7 @@ export default function VoiceCallTrainer({ onBack }) {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                   <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {voiceState === "listening" && (
-                      <div style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "2px solid #34D399", animation: "ripple 1s ease infinite" }} />
+                      <div style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "2px solid #EF4444", animation: "ripple 1s ease infinite" }} />
                     )}
                     <button
                       onClick={handleTapToSpeak}
@@ -932,23 +930,23 @@ export default function VoiceCallTrainer({ onBack }) {
                       style={{
                         width: "60px", height: "60px", borderRadius: "50%", border: "none",
                         background: voiceState === "listening"
-                          ? "linear-gradient(135deg,#22C55E,#16A34A)"
+                          ? "linear-gradient(135deg,#EF4444,#DC2626)"
                           : voiceState === "ai-speaking" || voiceState === "processing"
                           ? "rgba(255,255,255,.08)"
                           : `linear-gradient(135deg,${col},${level?.darkColor || col})`,
                         fontSize: "24px",
-                        boxShadow: voiceState === "listening" ? "0 0 24px rgba(34,197,94,.5)" : "none",
+                        boxShadow: voiceState === "listening" ? "0 0 24px rgba(239,68,68,.5)" : "none",
                         transition: "all .2s ease",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: voiceState === "ai-speaking" || voiceState === "processing" ? "default" : "pointer",
                         opacity: voiceState === "ai-speaking" || voiceState === "processing" ? 0.6 : 1,
                       }}>
-                      {voiceState === "ai-speaking" ? "🔊" : voiceState === "processing" ? "⚙️" : voiceState === "listening" ? "🎙️" : "🎤"}
+                      {voiceState === "ai-speaking" ? "🔊" : voiceState === "processing" ? "⚙️" : voiceState === "listening" ? "⏹" : "🎤"}
                     </button>
                   </div>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: "12px", fontWeight: "700", color: stateColor }}>
-                      {voiceState === "listening" ? "녹음 중… 멈추면 자동 전송 (탭하면 즉시 전송)" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "음성 인식 중…" : "탭하여 말하기"}
+                      {voiceState === "listening" ? "🔴 녹음 중 — 탭하면 전송" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "음성 인식 중…" : "🎤 탭하여 말하기"}
                     </div>
                     {(transcript || interimTranscript) && (
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px", maxWidth: "260px", fontStyle: "italic" }}>
