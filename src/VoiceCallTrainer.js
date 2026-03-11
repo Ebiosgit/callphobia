@@ -335,6 +335,7 @@ export default function VoiceCallTrainer({ onBack }) {
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const accumulatedRef = useRef(""); // 누적 텍스트
+  const finalResultsCountRef = useRef(0); // 처리한 final 결과 수 (중복 방지)
   const startTimeRef = useRef(null);
   const historyRef = useRef([]);
   const levelRef = useRef(null);
@@ -456,18 +457,26 @@ export default function VoiceCallTrainer({ onBack }) {
     rec.interimResults = true;
     recognitionRef.current = rec;
     accumulatedRef.current = "";
+    finalResultsCountRef.current = 0;
     startTimeRef.current = Date.now();
 
     rec.onresult = (e) => {
       if (isEndingRef.current) return;
-      let interim = "", final = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
+      let interim = "", newFinal = "";
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          // 이미 처리한 final 결과는 건너뜀 (중복 방지)
+          if (i >= finalResultsCountRef.current) {
+            newFinal += e.results[i][0].transcript;
+            finalResultsCountRef.current = i + 1;
+          }
+        } else {
+          interim += e.results[i][0].transcript;
+        }
       }
       setInterimTranscript(interim);
-      if (final) {
-        accumulatedRef.current += (accumulatedRef.current ? " " : "") + final;
+      if (newFinal) {
+        accumulatedRef.current += (accumulatedRef.current ? " " : "") + newFinal;
         setTranscript(accumulatedRef.current);
       }
       // 3초 침묵 시 자동 전송
