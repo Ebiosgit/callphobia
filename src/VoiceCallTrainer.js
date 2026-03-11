@@ -297,11 +297,11 @@ function FeedbackAdvice({ feedback, level }) {
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div style={{ background: `${level.color}12`, borderRadius: "16px", padding: "16px", border: `1px solid ${level.color}25` }}>
-      <div style={{ fontSize: "12px", fontWeight: "700", color: level.color, marginBottom: "10px" }}>🤖 AI 코치 피드백</div>
+    <div style={{ background: "white", borderRadius: "16px", padding: "16px", border: "1px solid #E5E5E5" }}>
+      <div style={{ fontSize: "12px", fontWeight: "800", color: level.color, marginBottom: "10px" }}>🤖 AI 코치 피드백</div>
       {loading
-        ? <div style={{ color: "#64748B", fontSize: "13px" }}>분석 중...</div>
-        : <div style={{ fontSize: "13px", color: "#CBD5E1", lineHeight: "1.8", whiteSpace: "pre-wrap" }}>{advice}</div>
+        ? <div style={{ color: "#AFAFAF", fontSize: "13px" }}>분석 중...</div>
+        : <div style={{ fontSize: "13px", color: "#3C3C3C", lineHeight: "1.8", whiteSpace: "pre-wrap" }}>{advice}</div>
       }
     </div>
   );
@@ -349,7 +349,7 @@ export default function VoiceCallTrainer({ onBack }) {
   useEffect(() => {
     setMounted(true);
     const link = document.createElement("link");
-    link.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Nunito:wght@400;600;700;800;900&display=swap";
     link.rel = "stylesheet";
     document.head.appendChild(link);
     if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) setSttSupported(false);
@@ -623,13 +623,13 @@ export default function VoiceCallTrainer({ onBack }) {
     startCall(customLevel);
   };
 
-  const col = level?.color || "#34D399";
-  const stateColor = voiceState === "listening" ? "#34D399" : voiceState === "ai-speaking" ? col : "#64748B";
+  const col = level?.color || "#58CC02";
+  const stateColor = voiceState === "listening" ? "#58CC02" : voiceState === "ai-speaking" ? "#1CB0F6" : "#AFAFAF";
 
   return (
     <div style={{
-      fontFamily: "'Noto Sans KR', sans-serif", minHeight: "100vh",
-      background: "#070B16", color: "white",
+      fontFamily: "'Nunito', 'Noto Sans KR', sans-serif", minHeight: "100vh",
+      background: "#FFFFFF", color: "#3C3C3C",
       opacity: mounted ? 1 : 0, transition: "opacity 0.4s ease"
     }}>
       <style>{`
@@ -641,139 +641,158 @@ export default function VoiceCallTrainer({ onBack }) {
         @keyframes bar{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
         .msg{animation:slideUp .3s ease}
         .scrollbar-hide::-webkit-scrollbar{display:none}
+        .duo-btn:active{transform:translateY(3px);box-shadow:none!important}
       `}</style>
 
       {/* HOME */}
       {screen === "home" && !isConnecting && (
-        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "24px 16px 60px", animation: "fadeUp .5s ease" }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: "#475569", fontSize: "14px", cursor: "pointer", padding: "0 0 20px", display: "block", fontFamily: "inherit" }}>← 홈으로</button>
-          <div style={{ textAlign: "center", marginBottom: "36px" }}>
-            <div style={{ display: "inline-flex", width: "72px", height: "72px", borderRadius: "24px", background: "linear-gradient(135deg,#34D399,#3B82F6)", alignItems: "center", justifyContent: "center", fontSize: "32px", marginBottom: "16px", boxShadow: "0 8px 32px rgba(52,211,153,.3)" }}>🎙️</div>
-            <h1 style={{ fontSize: "24px", fontWeight: "800", margin: "0 0 8px", letterSpacing: "-.5px" }}>음성 통화 트레이너</h1>
-            <p style={{ fontSize: "13px", color: "#64748B", margin: 0, lineHeight: "1.7" }}>실제 목소리로 AI와 통화 연습을 하고<br />상세한 피드백을 받아보세요</p>
+        <div style={{ maxWidth: "460px", margin: "0 auto", animation: "fadeUp .5s ease" }}>
+          {/* Green header bar */}
+          <div style={{ background: "#58CC02", padding: "20px 16px 24px", position: "relative" }}>
+            <button onClick={onBack} style={{ background: "none", border: "none", color: "white", fontSize: "14px", cursor: "pointer", padding: "0 0 12px", display: "block", fontFamily: "inherit", fontWeight: "700", opacity: 0.9 }}>← 홈으로</button>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "48px", animation: "bounce 2s ease infinite", display: "inline-block" }}>📞</div>
+              <h1 style={{ fontSize: "22px", fontWeight: "900", margin: "8px 0 4px", color: "white", letterSpacing: "-.5px" }}>콜포비아 트레이너</h1>
+              <p style={{ fontSize: "13px", color: "rgba(255,255,255,.85)", margin: 0, lineHeight: "1.6", fontWeight: "600" }}>AI와 실전 전화 통화 연습</p>
+            </div>
             {!sttSupported && (
-              <div style={{ marginTop: "12px", padding: "10px 14px", background: "#FEF3C7", borderRadius: "10px", color: "#92400E", fontSize: "12px" }}>
+              <div style={{ marginTop: "12px", padding: "10px 14px", background: "rgba(255,255,255,.2)", borderRadius: "10px", color: "white", fontSize: "12px" }}>
                 ⚠️ 이 브라우저는 음성인식을 지원하지 않아요. Chrome을 사용해주세요.
               </div>
             )}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {LEVELS.map((lv, i) => (
-              <button key={lv.id} onClick={() => startCall(lv)}
-                style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: "20px", padding: "18px 20px", cursor: "pointer", textAlign: "left", color: "white", transition: "all .2s ease", animation: `fadeUp .5s ease ${i * .08}s both` }}
-                onMouseEnter={e => { e.currentTarget.style.background = `${lv.color}12`; e.currentTarget.style.borderColor = `${lv.color}50`; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,.07)"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ width: "52px", height: "52px", borderRadius: "16px", background: `${lv.color}18`, border: `1px solid ${lv.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", flexShrink: 0 }}>{lv.emoji}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                      <span style={{ fontWeight: "700", fontSize: "15px" }}>{lv.title}</span>
-                      <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "6px", background: `${lv.color}20`, color: lv.color, fontWeight: "700" }}>{lv.subtitle}</span>
+
+          {/* Level path */}
+          <div style={{ padding: "24px 16px 60px" }}>
+            {(() => {
+              const zigzag = [0, 70, -70, 70, -70, 0];
+              let lastSection = null;
+              const items = [];
+              LEVELS.forEach((lv, i) => {
+                const section = lv.difficulty === 1 ? 1 : lv.difficulty === 2 ? 2 : 3;
+                if (section !== lastSection) {
+                  lastSection = section;
+                  const bannerColor = section === 1 ? "#1CB0F6" : section === 2 ? "#CE82FF" : "#FF9600";
+                  const bannerShadow = section === 1 ? "#009DC4" : section === 2 ? "#A855F7" : "#E07800";
+                  const bannerLabel = section === 1 ? "SECTION 1 · 입문" : section === 2 ? "SECTION 2 · 중급" : "SECTION 3 · 고급";
+                  items.push(
+                    <div key={`section-${section}`} style={{ background: bannerColor, borderRadius: "16px", padding: "14px 20px", marginBottom: "24px", boxShadow: `0 4px 0 ${bannerShadow}`, textAlign: "center" }}>
+                      <span style={{ color: "white", fontWeight: "800", fontSize: "15px", letterSpacing: "0.5px" }}>{bannerLabel}</span>
                     </div>
-                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>{lv.description}</div>
-                    <div style={{ display: "flex", gap: "3px" }}>
+                  );
+                }
+                const offset = zigzag[i % zigzag.length];
+                items.push(
+                  <div key={lv.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "20px", transform: `translateX(${offset}px)`, animation: `fadeUp .5s ease ${i * .08}s both` }}>
+                    <button
+                      className="duo-btn"
+                      onClick={() => startCall(lv)}
+                      style={{ width: "72px", height: "72px", borderRadius: "50%", border: "none", background: lv.color, borderBottom: `4px solid ${lv.darkColor}`, boxShadow: `0 4px 0 ${lv.darkColor}`, cursor: "pointer", fontSize: "28px", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s ease", fontFamily: "inherit" }}
+                    >{lv.emoji}</button>
+                    <div style={{ fontSize: "11px", fontWeight: "800", color: "#3C3C3C", marginTop: "8px", textAlign: "center", maxWidth: "80px" }}>{lv.title}</div>
+                    <div style={{ display: "flex", gap: "4px", marginTop: "5px" }}>
                       {Array.from({ length: 4 }).map((_, j) => (
-                        <div key={j} style={{ width: "18px", height: "3px", borderRadius: "2px", background: j < lv.difficulty ? lv.color : "rgba(255,255,255,.1)" }} />
+                        <div key={j} style={{ width: "6px", height: "6px", borderRadius: "50%", background: j < lv.difficulty ? lv.color : "#E5E5E5" }} />
                       ))}
                     </div>
                   </div>
-                </div>
-                <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px solid rgba(255,255,255,.05)", fontSize: "11px", color: "#475569" }}>💡 {lv.tip}</div>
-              </button>
-            ))}
+                );
+              });
+              return items;
+            })()}
 
             {/* ── 직접 입력 카드 ── */}
             {!showCustom ? (
               <button
                 onClick={() => setShowCustom(true)}
-                style={{ background: "rgba(244,114,182,.04)", border: "1px dashed rgba(244,114,182,.35)", borderRadius: "20px", padding: "18px 20px", cursor: "pointer", textAlign: "left", color: "white", transition: "all .2s ease", animation: `fadeUp .5s ease ${LEVELS.length * .08}s both` }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,114,182,.1)"; e.currentTarget.style.borderColor = "rgba(244,114,182,.6)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,114,182,.04)"; e.currentTarget.style.borderColor = "rgba(244,114,182,.35)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                style={{ width: "100%", background: "white", border: "2px dashed #E5E5E5", borderRadius: "20px", padding: "18px 20px", cursor: "pointer", textAlign: "left", color: "#3C3C3C", transition: "all .2s ease", animation: `fadeUp .5s ease ${LEVELS.length * .08}s both`, boxSizing: "border-box" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#F472B6"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E5E5"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ width: "52px", height: "52px", borderRadius: "16px", background: "rgba(244,114,182,.15)", border: "1px solid rgba(244,114,182,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", flexShrink: 0 }}>✏️</div>
+                  <div style={{ width: "52px", height: "52px", borderRadius: "16px", background: "rgba(244,114,182,.12)", border: "1px solid rgba(244,114,182,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", flexShrink: 0 }}>✏️</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: "700", fontSize: "15px", marginBottom: "4px" }}>직접 상황 입력</div>
-                    <div style={{ fontSize: "12px", color: "#94A3B8" }}>내가 원하는 상황을 직접 만들어서 연습해요</div>
+                    <div style={{ fontWeight: "800", fontSize: "15px", marginBottom: "4px", color: "#3C3C3C" }}>직접 상황 입력</div>
+                    <div style={{ fontSize: "12px", color: "#AFAFAF" }}>내가 원하는 상황을 직접 만들어서 연습해요</div>
                   </div>
-                  <div style={{ fontSize: "18px", color: "#F472B6", opacity: 0.7 }}>+</div>
+                  <div style={{ fontSize: "20px", color: "#F472B6", fontWeight: "900" }}>+</div>
                 </div>
               </button>
             ) : (
-              <div style={{ background: "rgba(244,114,182,.06)", border: "1px solid rgba(244,114,182,.3)", borderRadius: "20px", padding: "20px", animation: "fadeUp .3s ease" }}>
+              <div style={{ background: "white", border: "2px solid #E5E5E5", borderRadius: "20px", padding: "20px", animation: "fadeUp .3s ease", boxShadow: "0 2px 12px rgba(0,0,0,.06)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{ fontSize: "20px" }}>✏️</span>
-                    <span style={{ fontWeight: "700", fontSize: "15px" }}>직접 상황 입력</span>
+                    <span style={{ fontWeight: "800", fontSize: "15px", color: "#3C3C3C" }}>직접 상황 입력</span>
                   </div>
-                  <button onClick={() => setShowCustom(false)} style={{ background: "none", border: "none", color: "#64748B", fontSize: "18px", cursor: "pointer", lineHeight: 1 }}>×</button>
+                  <button onClick={() => setShowCustom(false)} style={{ background: "none", border: "none", color: "#AFAFAF", fontSize: "20px", cursor: "pointer", lineHeight: 1, fontWeight: "700" }}>×</button>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                   {/* 상황 이름 */}
                   <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>상황 이름 *</label>
+                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>상황 이름 *</label>
                     <input
                       value={customTitle}
                       onChange={e => setCustomTitle(e.target.value)}
                       placeholder="예: 치과 예약, 전기요금 문의"
                       maxLength={20}
-                      style={{ width: "100%", padding: "12px 14px", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "12px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-                      onFocus={e => e.target.style.borderColor = "rgba(244,114,182,.6)"}
-                      onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.1)"}
+                      style={{ width: "100%", background: "white", border: "2px solid #E5E5E5", borderRadius: "12px", padding: "12px 14px", color: "#3C3C3C", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                      onFocus={e => e.target.style.borderColor = "#58CC02"}
+                      onBlur={e => e.target.style.borderColor = "#E5E5E5"}
                     />
                   </div>
 
                   {/* 상대방 역할 */}
                   <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>상대방 역할 *</label>
+                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>상대방 역할 *</label>
                     <input
                       value={customRole}
                       onChange={e => setCustomRole(e.target.value)}
                       placeholder="예: 치과 접수 직원, 전기회사 상담사"
                       maxLength={30}
-                      style={{ width: "100%", padding: "12px 14px", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "12px", color: "white", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-                      onFocus={e => e.target.style.borderColor = "rgba(244,114,182,.6)"}
-                      onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.1)"}
+                      style={{ width: "100%", background: "white", border: "2px solid #E5E5E5", borderRadius: "12px", padding: "12px 14px", color: "#3C3C3C", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                      onFocus={e => e.target.style.borderColor = "#58CC02"}
+                      onBlur={e => e.target.style.borderColor = "#E5E5E5"}
                     />
                   </div>
 
                   {/* 시나리오 */}
                   <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>연습할 상황 설명 *</label>
+                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>연습할 상황 설명 *</label>
                     <textarea
                       value={customScenario}
                       onChange={e => setCustomScenario(e.target.value)}
                       placeholder="예: 충치 치료 때문에 이번 주 진료 예약을 하려고 전화한다"
                       maxLength={100}
                       rows={3}
-                      style={{ width: "100%", padding: "12px 14px", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "12px", color: "white", fontSize: "14px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", lineHeight: "1.6" }}
-                      onFocus={e => e.target.style.borderColor = "rgba(244,114,182,.6)"}
-                      onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.1)"}
+                      style={{ width: "100%", background: "white", border: "2px solid #E5E5E5", borderRadius: "12px", padding: "12px 14px", color: "#3C3C3C", fontSize: "14px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", lineHeight: "1.6" }}
+                      onFocus={e => e.target.style.borderColor = "#58CC02"}
+                      onBlur={e => e.target.style.borderColor = "#E5E5E5"}
                     />
-                    <div style={{ textAlign: "right", fontSize: "11px", color: "#475569", marginTop: "4px" }}>{customScenario.length}/100</div>
+                    <div style={{ textAlign: "right", fontSize: "11px", color: "#AFAFAF", marginTop: "4px" }}>{customScenario.length}/100</div>
                   </div>
 
                   {/* 통화 방향 */}
                   <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>나의 입장</label>
+                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>나의 입장</label>
                     <div style={{ display: "flex", gap: "8px" }}>
                       {[
                         { v: "calling", emoji: "📞", label: "전화 거는 입장", desc: "내가 먼저 전화함" },
                         { v: "receiving", emoji: "📲", label: "전화 받는 입장", desc: "상대방이 먼저 전화함" },
                       ].map(({ v, emoji, label, desc }) => (
                         <button key={v} onClick={() => setCustomDirection(v)}
-                          style={{ flex: 1, padding: "10px 8px", borderRadius: "12px", border: "1px solid", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease", textAlign: "center",
-                            borderColor: customDirection === v ? "#F472B6" : "rgba(255,255,255,.1)",
-                            background: customDirection === v ? "rgba(244,114,182,.2)" : "rgba(255,255,255,.04)",
+                          style={{ flex: 1, padding: "10px 8px", borderRadius: "12px", border: "2px solid", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease", textAlign: "center",
+                            borderColor: customDirection === v ? "#F472B6" : "#E5E5E5",
+                            background: customDirection === v ? "rgba(244,114,182,.08)" : "white",
                           }}
                         >
                           <div style={{ fontSize: "18px", marginBottom: "4px" }}>{emoji}</div>
-                          <div style={{ fontSize: "11px", fontWeight: "700", color: customDirection === v ? "#F472B6" : "#94A3B8" }}>{label}</div>
-                          <div style={{ fontSize: "10px", color: customDirection === v ? "#F472B6" : "#475569", marginTop: "2px", opacity: 0.8 }}>{desc}</div>
+                          <div style={{ fontSize: "11px", fontWeight: "800", color: customDirection === v ? "#F472B6" : "#3C3C3C" }}>{label}</div>
+                          <div style={{ fontSize: "10px", color: customDirection === v ? "#F472B6" : "#AFAFAF", marginTop: "2px" }}>{desc}</div>
                         </button>
                       ))}
                     </div>
@@ -781,7 +800,7 @@ export default function VoiceCallTrainer({ onBack }) {
 
                   {/* 난이도 */}
                   <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>난이도</label>
+                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>난이도</label>
                     <div style={{ display: "flex", gap: "8px" }}>
                       {[
                         { v: 1, label: "Lv.1 입문" },
@@ -790,10 +809,10 @@ export default function VoiceCallTrainer({ onBack }) {
                         { v: 4, label: "Lv.4 고급" },
                       ].map(({ v, label }) => (
                         <button key={v} onClick={() => setCustomDifficulty(v)}
-                          style={{ flex: 1, padding: "8px 4px", borderRadius: "10px", border: "1px solid", fontSize: "11px", fontWeight: "700", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease",
-                            borderColor: customDifficulty === v ? "#F472B6" : "rgba(255,255,255,.1)",
-                            background: customDifficulty === v ? "rgba(244,114,182,.2)" : "rgba(255,255,255,.04)",
-                            color: customDifficulty === v ? "#F472B6" : "#64748B",
+                          style={{ flex: 1, padding: "8px 4px", borderRadius: "10px", border: "2px solid", fontSize: "11px", fontWeight: "800", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease",
+                            borderColor: customDifficulty === v ? "#F472B6" : "#E5E5E5",
+                            background: customDifficulty === v ? "rgba(244,114,182,.08)" : "white",
+                            color: customDifficulty === v ? "#F472B6" : "#AFAFAF",
                           }}
                         >{label}</button>
                       ))}
@@ -801,18 +820,25 @@ export default function VoiceCallTrainer({ onBack }) {
                   </div>
 
                   {/* 시작 버튼 */}
-                  <button
-                    onClick={startCustomCall}
-                    disabled={!customTitle.trim() || !customRole.trim() || !customScenario.trim()}
-                    style={{ padding: "15px", borderRadius: "14px", border: "none", fontFamily: "inherit",
-                      background: (!customTitle.trim() || !customRole.trim() || !customScenario.trim()) ? "rgba(255,255,255,.06)" : "linear-gradient(135deg, #F472B6, #DB2777)",
-                      color: (!customTitle.trim() || !customRole.trim() || !customScenario.trim()) ? "#475569" : "white",
-                      fontSize: "15px", fontWeight: "800", cursor: (!customTitle.trim() || !customRole.trim() || !customScenario.trim()) ? "not-allowed" : "pointer",
-                      transition: "all .2s ease",
-                    }}
-                  >
-                    📞 이 상황으로 통화 연습 시작
-                  </button>
+                  {(() => {
+                    const disabled = !customTitle.trim() || !customRole.trim() || !customScenario.trim();
+                    return (
+                      <button
+                        className="duo-btn"
+                        onClick={startCustomCall}
+                        disabled={disabled}
+                        style={{ padding: "15px", borderRadius: "16px", border: "none", fontFamily: "inherit",
+                          background: disabled ? "#E5E5E5" : "#58CC02",
+                          color: disabled ? "#AFAFAF" : "white",
+                          fontSize: "15px", fontWeight: "800", cursor: disabled ? "not-allowed" : "pointer",
+                          boxShadow: disabled ? "none" : "0 4px 0 #46A302",
+                          transition: "all .2s ease",
+                        }}
+                      >
+                        📞 이 상황으로 통화 연습 시작
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -822,45 +848,45 @@ export default function VoiceCallTrainer({ onBack }) {
 
       {/* CONNECTING */}
       {isConnecting && level && (
-        <div className="min-vh-full" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "24px", animation: "fadeIn .3s ease" }}>
+        <div className="min-vh-full" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "24px", animation: "fadeIn .3s ease", minHeight: "100vh", background: "#FFFFFF" }}>
           <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {[1, 2, 3].map(i => <div key={i} style={{ position: "absolute", width: `${i * 50}px`, height: `${i * 50}px`, borderRadius: "50%", border: `2px solid ${level.color}`, animation: `ripple 2s ease ${i * .5}s infinite` }} />)}
-            <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: `${level.color}25`, border: `2px solid ${level.color}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", animation: "ring 1.2s ease infinite", zIndex: 1 }}>{level.emoji}</div>
+            {[1, 2, 3].map(i => <div key={i} style={{ position: "absolute", width: `${i * 50}px`, height: `${i * 50}px`, borderRadius: "50%", border: `2px solid #58CC02`, animation: `ripple 2s ease ${i * .5}s infinite` }} />)}
+            <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "rgba(88,204,2,.15)", border: `2px solid rgba(88,204,2,.5)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", animation: "ring 1.2s ease infinite", zIndex: 1 }}>{level.emoji}</div>
           </div>
           <div style={{ textAlign: "center", marginTop: "40px" }}>
-            <div style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>연결 중...</div>
-            <div style={{ fontSize: "13px", color: "#64748B" }}>{level.role}에게 전화하는 중</div>
+            <div style={{ fontSize: "18px", fontWeight: "800", marginBottom: "6px", color: "#3C3C3C" }}>연결 중...</div>
+            <div style={{ fontSize: "13px", color: "#AFAFAF" }}>{level.role}에게 전화하는 중</div>
           </div>
         </div>
       )}
 
       {/* CALLING */}
       {screen === "calling" && level && (
-        <div className="vh-full" style={{ maxWidth: "460px", margin: "0 auto", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "20px 16px 14px", background: `linear-gradient(180deg,${col}18 0%,transparent)`, borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+        <div className="vh-full" style={{ maxWidth: "460px", margin: "0 auto", display: "flex", flexDirection: "column", background: "#FFFFFF" }}>
+          <div style={{ padding: "20px 16px 14px", background: "#FFFFFF", borderBottom: "1px solid #E5E5E5" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "46px", height: "46px", borderRadius: "50%", background: `${col}20`, border: `2px solid ${col}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>{level.emoji}</div>
+              <div style={{ width: "46px", height: "46px", borderRadius: "50%", background: `${col}18`, border: `2px solid ${col}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>{level.emoji}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: "700", fontSize: "15px" }}>{level.role}</div>
-                <div style={{ fontSize: "12px", color: col, display: "flex", alignItems: "center", gap: "5px" }}>
-                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: col, display: "inline-block", animation: "pulse 2s infinite" }} />
+                <div style={{ fontWeight: "800", fontSize: "15px", color: "#3C3C3C" }}>{level.role}</div>
+                <div style={{ fontSize: "12px", color: "#58CC02", display: "flex", alignItems: "center", gap: "5px", fontWeight: "700" }}>
+                  <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#58CC02", display: "inline-block", animation: "pulse 2s infinite" }} />
                   통화 중 · {formatTime(callDuration)}
                 </div>
               </div>
             </div>
-            <div style={{ marginTop: "10px", padding: "8px 12px", background: "rgba(255,255,255,.04)", borderRadius: "10px", fontSize: "11px", color: "#64748B" }}>📋 {level.scenario}</div>
+            <div style={{ marginTop: "10px", padding: "8px 12px", background: "#F7F7F7", borderRadius: "10px", fontSize: "11px", color: "#AFAFAF" }}>📋 {level.scenario}</div>
           </div>
 
-          <div className="scrollbar-hide" style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div className="scrollbar-hide" style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "10px", background: "#FFFFFF" }}>
             {messages.filter(m => m.content !== "[CALL_START]").map((msg, i) => (
               <div key={i} className="msg" style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
                 {msg.role === "assistant" && (
-                  <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: `${col}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", marginRight: "7px", flexShrink: 0, alignSelf: "flex-end" }}>{level.emoji}</div>
+                  <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: `${col}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", marginRight: "7px", flexShrink: 0, alignSelf: "flex-end" }}>{level.emoji}</div>
                 )}
-                <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? `linear-gradient(135deg,${col},${level.darkColor})` : "rgba(255,255,255,.08)", fontSize: "13px", lineHeight: "1.65", color: "white" }}>
+                <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? "#58CC02" : "#F7F7F7", fontSize: "13px", lineHeight: "1.65", color: msg.role === "user" ? "white" : "#3C3C3C" }}>
                   {msg.content}
                   {msg.role === "user" && msg.thinkTime > 0 && (
-                    <div style={{ fontSize: "10px", color: "rgba(255,255,255,.35)", marginTop: "4px", textAlign: "right" }}>{(msg.thinkTime / 1000).toFixed(1)}초 후 답변</div>
+                    <div style={{ fontSize: "10px", color: "rgba(255,255,255,.5)", marginTop: "4px", textAlign: "right" }}>{(msg.thinkTime / 1000).toFixed(1)}초 후 답변</div>
                   )}
                 </div>
               </div>
@@ -868,41 +894,46 @@ export default function VoiceCallTrainer({ onBack }) {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="safe-area-bottom" style={{ padding: "16px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,.06)", background: "rgba(0,0,0,.4)" }}>
+          <div className="safe-area-bottom" style={{ padding: "16px", paddingTop: "16px", borderTop: "1px solid #E5E5E5", background: "#FFFFFF" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "16px", gap: "12px" }}>
               {/* 탭하여 말하기 / 상태 표시 */}
               {!textMode && sttSupported && (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                   <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {voiceState === "listening" && (
-                      <div style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "2px solid #34D399", animation: "ripple 1s ease infinite" }} />
+                      <div style={{ position: "absolute", inset: "-8px", borderRadius: "50%", border: "2px solid #FF4B4B", animation: "ripple 1s ease infinite" }} />
                     )}
                     <button
+                      className="duo-btn"
                       onClick={handleTapToSpeak}
                       disabled={voiceState === "ai-speaking" || voiceState === "processing"}
                       style={{
-                        width: "60px", height: "60px", borderRadius: "50%", border: "none",
+                        width: "68px", height: "68px", borderRadius: "50%", border: "none",
                         background: voiceState === "listening"
-                          ? "linear-gradient(135deg,#22C55E,#16A34A)"
+                          ? "#FF4B4B"
                           : voiceState === "ai-speaking" || voiceState === "processing"
-                          ? "rgba(255,255,255,.08)"
-                          : `linear-gradient(135deg,${col},${level?.darkColor || col})`,
-                        fontSize: "24px",
-                        boxShadow: voiceState === "listening" ? "0 0 24px rgba(34,197,94,.5)" : "none",
+                          ? "#E5E5E5"
+                          : "#58CC02",
+                        fontSize: "26px",
+                        boxShadow: voiceState === "listening"
+                          ? "0 4px 0 #CC0000"
+                          : voiceState === "ai-speaking" || voiceState === "processing"
+                          ? "none"
+                          : "0 4px 0 #46A302",
                         transition: "all .2s ease",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: voiceState === "ai-speaking" || voiceState === "processing" ? "default" : "pointer",
-                        opacity: voiceState === "ai-speaking" || voiceState === "processing" ? 0.6 : 1,
+                        opacity: voiceState === "ai-speaking" || voiceState === "processing" ? 0.7 : 1,
                       }}>
                       {voiceState === "ai-speaking" ? "🔊" : voiceState === "processing" ? "⚙️" : voiceState === "listening" ? "🎙️" : "🎤"}
                     </button>
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "12px", fontWeight: "700", color: stateColor }}>
+                    <div style={{ fontSize: "12px", fontWeight: "800", color: stateColor }}>
                       {voiceState === "listening" ? "듣는 중… 3초 후 자동 전송" : voiceState === "ai-speaking" ? `${level?.role} 말하는 중` : voiceState === "processing" ? "응답 생성 중…" : "탭하여 말하기"}
                     </div>
                     {(transcript || interimTranscript) && (
-                      <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px", maxWidth: "260px", fontStyle: "italic" }}>
+                      <div style={{ fontSize: "12px", color: "#AFAFAF", marginTop: "4px", maxWidth: "260px", fontStyle: "italic" }}>
                         "{transcript}{interimTranscript}"
                       </div>
                     )}
@@ -910,19 +941,19 @@ export default function VoiceCallTrainer({ onBack }) {
                   {voiceState === "ai-speaking" && (
                     <div style={{ display: "flex", alignItems: "center", gap: "3px", height: "20px" }}>
                       {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} style={{ width: "3px", borderRadius: "2px", background: col, transformOrigin: "bottom", animation: `bar ${0.5 + i * 0.06}s ease ${i * 0.08}s infinite`, height: "14px" }} />
+                        <div key={i} style={{ width: "3px", borderRadius: "2px", background: "#1CB0F6", transformOrigin: "bottom", animation: `bar ${0.5 + i * 0.06}s ease ${i * 0.08}s infinite`, height: "14px" }} />
                       ))}
                     </div>
                   )}
                 </div>
               )}
-              {voiceState === "processing" && <div style={{ width: "18px", height: "18px", border: "2px solid rgba(255,255,255,.2)", borderTopColor: col, borderRadius: "50%", animation: "spin .8s linear infinite" }} />}
+              {voiceState === "processing" && <div style={{ width: "18px", height: "18px", border: "2px solid #E5E5E5", borderTopColor: "#58CC02", borderRadius: "50%", animation: "spin .8s linear infinite" }} />}
             </div>
 
             {micError && (
-              <div style={{ marginBottom: "10px", padding: "8px 12px", background: "rgba(251,191,36,.1)", border: "1px solid rgba(251,191,36,.3)", borderRadius: "10px", fontSize: "11px", color: "#FCD34D", display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ marginBottom: "10px", padding: "8px 12px", background: "#FFF8E6", border: "1px solid #FFD88A", borderRadius: "10px", fontSize: "11px", color: "#B07D00", display: "flex", alignItems: "center", gap: "6px" }}>
                 ⚠️ {micError}
-                <button onClick={() => { setTextMode(false); setMicError(""); }} style={{ marginLeft: "auto", background: "none", border: "1px solid rgba(251,191,36,.4)", borderRadius: "6px", padding: "2px 8px", color: "#FCD34D", fontSize: "10px", cursor: "pointer", fontFamily: "inherit" }}>재시도</button>
+                <button onClick={() => { setTextMode(false); setMicError(""); }} style={{ marginLeft: "auto", background: "none", border: "1px solid #FFD88A", borderRadius: "6px", padding: "2px 8px", color: "#B07D00", fontSize: "10px", cursor: "pointer", fontFamily: "inherit" }}>재시도</button>
               </div>
             )}
 
@@ -941,7 +972,7 @@ export default function VoiceCallTrainer({ onBack }) {
                     }
                   }}
                   placeholder="텍스트로 입력하세요 (Enter 전송)"
-                  style={{ flex: 1, background: "rgba(255,255,255,.07)", border: `1px solid ${col}50`, borderRadius: "12px", padding: "10px 14px", color: "white", fontSize: "13px", outline: "none", fontFamily: "inherit" }}
+                  style={{ flex: 1, background: "white", border: "1px solid #E5E5E5", borderRadius: "24px", padding: "10px 16px", color: "#3C3C3C", fontSize: "13px", outline: "none", fontFamily: "inherit" }}
                 />
                 <button onClick={() => {
                   if (!textInput.trim()) return;
@@ -952,32 +983,33 @@ export default function VoiceCallTrainer({ onBack }) {
                   setMessages(newHistory);
                   setTextInput("");
                   sendToAI(newHistory, levelRef.current);
-                }} style={{ width: "40px", height: "40px", borderRadius: "50%", background: col, border: "none", color: "white", fontSize: "16px", cursor: "pointer", flexShrink: 0 }}>▶</button>
+                }} style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#58CC02", border: "none", color: "white", fontSize: "16px", cursor: "pointer", flexShrink: 0 }}>▶</button>
               </div>
             )}
 
             {sttSupported && (
-              <button onClick={() => setTextMode(t => !t)} style={{ width: "100%", marginBottom: "8px", padding: "9px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "12px", color: "#94A3B8", fontSize: "12px", cursor: "pointer", fontFamily: "inherit" }}>
+              <button onClick={() => setTextMode(t => !t)} style={{ width: "100%", marginBottom: "8px", padding: "9px", background: "white", border: "1px solid #E5E5E5", borderRadius: "12px", color: "#AFAFAF", fontSize: "12px", cursor: "pointer", fontFamily: "inherit", fontWeight: "600" }}>
                 {textMode ? "🎙️ 음성 입력으로 전환" : "⌨️ 텍스트 입력으로 전환"}
               </button>
             )}
 
-            <button onClick={endCall} style={{ width: "100%", padding: "13px", background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.35)", borderRadius: "14px", color: "#FCA5A5", fontSize: "14px", fontWeight: "700", cursor: "pointer", fontFamily: "inherit", transition: "all .2s", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,.28)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,.15)"}
-            >📵 전화 끊기 & 피드백 보기</button>
+            <button className="duo-btn" onClick={endCall} style={{ width: "100%", padding: "14px", background: "#FF4B4B", border: "none", borderRadius: "16px", color: "white", fontSize: "14px", fontWeight: "800", cursor: "pointer", fontFamily: "inherit", transition: "all .2s", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 0 #CC0000" }}
+            >📵 전화 끊기 &amp; 피드백 보기</button>
           </div>
         </div>
       )}
 
       {/* FEEDBACK */}
       {screen === "feedback" && feedback && level && (
-        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "28px 16px max(60px, env(safe-area-inset-bottom))", animation: "fadeUp .5s ease" }}>
+        <div style={{ maxWidth: "460px", margin: "0 auto", padding: "28px 16px max(60px, env(safe-area-inset-bottom))", animation: "fadeUp .5s ease", background: "#FFFFFF" }}>
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <div style={{ fontSize: "11px", color: "#64748B", letterSpacing: "1px", marginBottom: "8px" }}>통화 결과 분석</div>
-            <div style={{ fontSize: "76px", fontWeight: "800", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, color: feedback.totalScore >= 70 ? "#34D399" : feedback.totalScore >= 50 ? "#FBBF24" : "#F87171" }}>{feedback.totalScore}</div>
-            <div style={{ fontSize: "14px", color: "#94A3B8", marginTop: "6px" }}>
-              {feedback.totalScore >= 80 ? "🏆 훌륭해요! 실전도 거뜬해요" : feedback.totalScore >= 60 ? "👍 잘 하셨어요! 조금만 더 연습해봐요" : feedback.totalScore >= 40 ? "💪 분명 늘고 있어요. 다시 도전해봐요" : "🌱 처음이니까 괜찮아요!"}
+            <div style={{ fontSize: "11px", color: "#AFAFAF", letterSpacing: "1px", marginBottom: "8px", fontWeight: "700" }}>통화 결과 분석</div>
+            <div style={{ fontSize: "76px", fontWeight: "900", fontFamily: "'JetBrains Mono',monospace", lineHeight: 1, color: feedback.totalScore >= 70 ? "#58CC02" : feedback.totalScore >= 50 ? "#FF9600" : "#FF4B4B" }}>{feedback.totalScore}</div>
+            <div style={{ fontSize: "16px", fontWeight: "800", color: "#3C3C3C", marginTop: "10px" }}>
+              {feedback.totalScore >= 80 ? "🎉 훌륭해요!" : feedback.totalScore >= 60 ? "👍 잘 하셨어요!" : feedback.totalScore >= 40 ? "💪 분명 늘고 있어요!" : "🌱 처음이니까 괜찮아요!"}
+            </div>
+            <div style={{ fontSize: "13px", color: "#AFAFAF", marginTop: "4px" }}>
+              {feedback.totalScore >= 80 ? "실전도 거뜬해요" : feedback.totalScore >= 60 ? "조금만 더 연습해봐요" : feedback.totalScore >= 40 ? "다시 도전해봐요" : "꾸준히 하면 반드시 늘어요"}
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "16px" }}>
@@ -986,16 +1018,16 @@ export default function VoiceCallTrainer({ onBack }) {
               { label: "자신감", score: feedback.confidenceScore, icon: "💪", desc: `평균 ${feedback.avgLength}자` },
               { label: "반응속도", score: feedback.speedScore, icon: "⚡", desc: `평균 ${feedback.avgResponseTime}초` }
             ].map(item => (
-              <div key={item.label} style={{ background: "rgba(255,255,255,.04)", borderRadius: "14px", padding: "14px 10px", border: "1px solid rgba(255,255,255,.07)", textAlign: "center" }}>
+              <div key={item.label} style={{ background: "white", borderRadius: "16px", padding: "14px 10px", border: "1px solid #E5E5E5", textAlign: "center" }}>
                 <div style={{ fontSize: "18px", marginBottom: "5px" }}>{item.icon}</div>
-                <div style={{ fontSize: "22px", fontWeight: "800", fontFamily: "'JetBrains Mono',monospace", color: item.score >= 70 ? "#34D399" : item.score >= 50 ? "#FBBF24" : "#F87171" }}>{item.score}</div>
-                <div style={{ fontSize: "10px", fontWeight: "700", color: "#94A3B8", marginTop: "2px" }}>{item.label}</div>
-                <div style={{ fontSize: "10px", color: "#475569", marginTop: "3px" }}>{item.desc}</div>
+                <div style={{ fontSize: "22px", fontWeight: "900", fontFamily: "'JetBrains Mono',monospace", color: item.score >= 70 ? "#58CC02" : item.score >= 50 ? "#FF9600" : "#FF4B4B" }}>{item.score}</div>
+                <div style={{ fontSize: "10px", fontWeight: "800", color: "#AFAFAF", marginTop: "2px" }}>{item.label}</div>
+                <div style={{ fontSize: "10px", color: "#AFAFAF", marginTop: "3px" }}>{item.desc}</div>
               </div>
             ))}
           </div>
-          <div style={{ background: "rgba(255,255,255,.04)", borderRadius: "14px", padding: "14px", border: "1px solid rgba(255,255,255,.07)", marginBottom: "16px" }}>
-            <div style={{ fontSize: "11px", fontWeight: "700", color: "#64748B", marginBottom: "10px", letterSpacing: ".5px" }}>통화 통계</div>
+          <div style={{ background: "white", borderRadius: "16px", padding: "14px", border: "1px solid #E5E5E5", marginBottom: "16px" }}>
+            <div style={{ fontSize: "11px", fontWeight: "800", color: "#AFAFAF", marginBottom: "10px", letterSpacing: ".5px" }}>통화 통계</div>
             {[
               { label: "통화 시간", value: `${Math.floor(feedback.duration / 60)}분 ${feedback.duration % 60}초` },
               { label: "발화 횟수", value: `${feedback.turnCount}회` },
@@ -1003,18 +1035,18 @@ export default function VoiceCallTrainer({ onBack }) {
               { label: "긴 침묵 (8초↑)", value: `${feedback.longPauses}회`, warn: feedback.longPauses > 1 },
               { label: "필러워드", value: `${feedback.fillerCount}회`, warn: feedback.fillerCount > 3 },
             ].map(item => (
-              <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,.04)" }}>
-                <span style={{ fontSize: "12px", color: "#94A3B8" }}>{item.label}</span>
-                <span style={{ fontSize: "12px", fontWeight: "700", color: item.warn ? "#FBBF24" : "white", fontFamily: "'JetBrains Mono',monospace" }}>{item.value}</span>
+              <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #F0F0F0" }}>
+                <span style={{ fontSize: "12px", color: "#AFAFAF" }}>{item.label}</span>
+                <span style={{ fontSize: "12px", fontWeight: "800", color: item.warn ? "#FF9600" : "#3C3C3C", fontFamily: "'JetBrains Mono',monospace" }}>{item.value}</span>
               </div>
             ))}
           </div>
           <FeedbackAdvice feedback={feedback} level={level} />
           <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-            <button onClick={() => startCall(level)} style={{ flex: 1, padding: "13px", borderRadius: "13px", background: `linear-gradient(135deg,${col},${level.darkColor})`, border: "none", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>🔄 다시 연습</button>
-            <button onClick={resetAll} style={{ flex: 1, padding: "13px", borderRadius: "13px", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>📋 레벨 선택</button>
+            <button className="duo-btn" onClick={() => startCall(level)} style={{ flex: 1, padding: "14px", borderRadius: "16px", background: "#58CC02", border: "none", color: "white", fontWeight: "800", fontSize: "13px", cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 0 #46A302" }}>🔄 다시 연습</button>
+            <button onClick={resetAll} style={{ flex: 1, padding: "14px", borderRadius: "16px", background: "white", border: "2px solid #E5E5E5", color: "#3C3C3C", fontWeight: "800", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>📋 레벨 선택</button>
           </div>
-          <button onClick={onBack} style={{ width: "100%", marginTop: "10px", padding: "13px", borderRadius: "13px", background: "none", border: "1px solid rgba(255,255,255,.08)", color: "#475569", fontWeight: "600", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>← 홈으로</button>
+          <button onClick={onBack} style={{ width: "100%", marginTop: "10px", padding: "13px", borderRadius: "16px", background: "none", border: "none", color: "#AFAFAF", fontWeight: "600", fontSize: "13px", cursor: "pointer", fontFamily: "inherit" }}>← 홈으로</button>
         </div>
       )}
     </div>
