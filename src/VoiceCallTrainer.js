@@ -483,7 +483,7 @@ export default function VoiceCallTrainer({ onBack }) {
         accumulatedRef.current += (accumulatedRef.current ? " " : "") + newFinal;
         setTranscript(accumulatedRef.current);
       }
-      // 3초 침묵 시 자동 전송
+      // 2초 침묵 시 자동 전송
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
         if (isEndingRef.current) return;
@@ -499,7 +499,7 @@ export default function VoiceCallTrainer({ onBack }) {
         setMessages(newHistory);
         try { rec.stop(); } catch {}
         sendToAI(newHistory, levelRef.current);
-      }, 3000);
+      }, 2000);
     };
 
     rec.onerror = (e) => {
