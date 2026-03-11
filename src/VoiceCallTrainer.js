@@ -308,7 +308,7 @@ function FeedbackAdvice({ feedback, level }) {
 }
 
 export default function VoiceCallTrainer({ onBack }) {
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState("splash");
   const [level, setLevel] = useState(null);
   const [showCustom, setShowCustom] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
@@ -349,9 +349,13 @@ export default function VoiceCallTrainer({ onBack }) {
   useEffect(() => {
     setMounted(true);
     const link = document.createElement("link");
-    link.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Nunito:wght@400;600;700;800;900&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap";
     link.rel = "stylesheet";
     document.head.appendChild(link);
+    const iconLink = document.createElement("link");
+    iconLink.href = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200";
+    iconLink.rel = "stylesheet";
+    document.head.appendChild(iconLink);
     if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) setSttSupported(false);
   }, []);
 
@@ -628,13 +632,15 @@ export default function VoiceCallTrainer({ onBack }) {
 
   return (
     <div style={{
-      fontFamily: "'Nunito', 'Noto Sans KR', sans-serif", minHeight: "100vh",
-      background: "#FFFFFF", color: "#3C3C3C",
+      fontFamily: "'Plus Jakarta Sans', 'Noto Sans KR', sans-serif", minHeight: "100vh",
+      background: "#FFFFFF", color: "#1f2937",
       opacity: mounted ? 1 : 0, transition: "opacity 0.4s ease"
     }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
         @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-15deg)}40%{transform:rotate(15deg)}60%{transform:rotate(-10deg)}80%{transform:rotate(10deg)}}
         @keyframes ripple{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.2);opacity:0}}
@@ -642,10 +648,96 @@ export default function VoiceCallTrainer({ onBack }) {
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
         .msg{animation:slideUp .3s ease}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .duo-btn:active{transform:translateY(3px);box-shadow:none!important}
+        .msicon{font-family:'Material Symbols Outlined';font-style:normal;font-weight:normal;display:inline-block;line-height:1;text-transform:none;letter-spacing:normal;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;}
       `}</style>
+
+      {/* ── SPLASH (메인 소개 페이지) ── */}
+      {screen === "splash" && (
+        <div style={{ maxWidth: "460px", margin: "0 auto", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#fff", animation: "fadeIn .4s ease", position: "relative", overflow: "hidden" }}>
+          {/* 배경 블러 데코 */}
+          <div style={{ position: "fixed", top: "80px", left: "-40px", width: "160px", height: "160px", borderRadius: "50%", background: "rgba(89,202,2,0.05)", filter: "blur(40px)", pointerEvents: "none" }} />
+          <div style={{ position: "fixed", bottom: "160px", right: "-40px", width: "240px", height: "240px", borderRadius: "50%", background: "rgba(89,202,2,0.05)", filter: "blur(40px)", pointerEvents: "none" }} />
+
+          {/* Top App Bar */}
+          <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: "#fff", borderBottom: "1px solid #f1f5f9" }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(89,202,2,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span className="msicon" style={{ fontSize: "22px", color: "#59ca02" }}>language</span>
+            </div>
+            <h2 style={{ fontSize: "17px", fontWeight: "800", color: "#1f2937", margin: 0 }}>Call Phobia Trainer</h2>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span className="msicon" style={{ fontSize: "22px", color: "#9ca3af" }}>help_outline</span>
+            </div>
+          </header>
+
+          {/* Hero & Mascot */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", gap: "32px" }}>
+            {/* 마스코트 영역 */}
+            <div style={{ position: "relative", width: "100%", maxWidth: "320px", aspectRatio: "1", background: "#f0f9eb", borderRadius: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {/* 초록 원 */}
+              <div style={{ position: "relative", width: "220px", height: "220px", borderRadius: "50%", background: "linear-gradient(135deg, #59ca02, #4eb302)", display: "flex", alignItems: "center", justifyContent: "center", animation: "float 3.5s ease-in-out infinite", boxShadow: "0 12px 40px rgba(89,202,2,0.35)" }}>
+                {/* 흰 데코 원 */}
+                <div style={{ position: "absolute", top: "-30px", left: "-30px", width: "96px", height: "96px", borderRadius: "50%", background: "rgba(255,255,255,0.2)", pointerEvents: "none" }} />
+                {/* 흰 내부 원 + 아이콘 */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", position: "relative", zIndex: 1 }}>
+                  <div style={{ width: "112px", height: "112px", borderRadius: "50%", background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 20px rgba(0,0,0,0.13)" }}>
+                    <span className="msicon" style={{ fontSize: "64px", color: "#59ca02" }}>record_voice_over</span>
+                  </div>
+                  {/* AI Coach 뱃지 */}
+                  <div style={{ background: "white", padding: "6px 16px", borderRadius: "999px", display: "flex", alignItems: "center", gap: "6px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+                    <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#59ca02", display: "inline-block", animation: "pulseDot 1.5s ease infinite" }} />
+                    <span style={{ fontSize: "13px", fontWeight: "700", color: "#59ca02" }}>AI Coach</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 말풍선 */}
+              <div style={{ position: "absolute", top: "-14px", right: "-8px", background: "white", padding: "12px 14px", borderRadius: "18px", boxShadow: "0 6px 24px rgba(0,0,0,0.12)", border: "2px solid #f1f5f9", maxWidth: "155px", zIndex: 10 }}>
+                <p style={{ fontSize: "13px", fontWeight: "700", color: "#374151", margin: 0, lineHeight: "1.5", textAlign: "center" }}>걱정 마세요,<br/>제가 도와줄게요!</p>
+                {/* 말풍선 꼬리 */}
+                <div style={{ position: "absolute", bottom: "-9px", left: "16px", width: "16px", height: "16px", background: "white", border: "2px solid #f1f5f9", borderTop: "none", borderLeft: "none", transform: "rotate(45deg)" }} />
+              </div>
+            </div>
+
+            {/* 헤드라인 */}
+            <div style={{ textAlign: "center" }}>
+              <h1 style={{ fontSize: "26px", fontWeight: "900", color: "#1f2937", margin: "0 0 12px", lineHeight: "1.35", letterSpacing: "-0.5px", padding: "0 16px" }}>
+                전화가 무서웠던 나에게,<br/>
+                <span style={{ color: "#59ca02" }}>이제 연습할 기회가 생겼다.</span>
+              </h1>
+              <p style={{ fontSize: "17px", color: "#6b7280", margin: 0, lineHeight: "1.7", fontWeight: "600", padding: "0 24px" }}>
+                AI와 실전처럼 통화하고<br/>자신감을 키워보세요.
+              </p>
+            </div>
+          </div>
+
+          {/* 하단 버튼 */}
+          <div style={{ padding: "16px 24px 40px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <button
+              onClick={() => setScreen("home")}
+              style={{ width: "100%", height: "56px", borderRadius: "9999px", border: "none", background: "#59ca02", color: "white", fontSize: "17px", fontWeight: "800", cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 0 #46a302", transition: "transform .15s, box-shadow .15s", letterSpacing: "0.3px" }}
+              onMouseDown={e => { e.currentTarget.style.transform = "translateY(4px)"; e.currentTarget.style.boxShadow = "none"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 0 #46a302"; }}
+              onTouchStart={e => { e.currentTarget.style.transform = "translateY(4px)"; e.currentTarget.style.boxShadow = "none"; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 0 #46a302"; }}
+            >시작하기</button>
+            <button
+              onClick={() => setScreen("home")}
+              style={{ width: "100%", height: "56px", borderRadius: "9999px", border: "2px solid #e5e7eb", background: "white", color: "#4b5563", fontSize: "16px", fontWeight: "800", cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 0 #e5e7eb", transition: "transform .15s, box-shadow .15s" }}
+              onMouseDown={e => { e.currentTarget.style.transform = "translateY(4px)"; e.currentTarget.style.boxShadow = "none"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 0 #e5e7eb"; }}
+              onTouchStart={e => { e.currentTarget.style.transform = "translateY(4px)"; e.currentTarget.style.boxShadow = "none"; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 0 #e5e7eb"; }}
+            >이미 계정이 있어요</button>
+            <p style={{ textAlign: "center", fontSize: "11px", color: "#9ca3af", margin: 0, fontWeight: "600" }}>
+              계속함으로써 <span style={{ textDecoration: "underline", cursor: "pointer" }}>이용약관</span> 및 <span style={{ textDecoration: "underline", cursor: "pointer" }}>개인정보처리방침</span>에 동의하게 됩니다.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* HOME */}
       {screen === "home" && !isConnecting && (
