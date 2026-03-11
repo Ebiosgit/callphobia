@@ -739,202 +739,230 @@ export default function VoiceCallTrainer({ onBack }) {
         </div>
       )}
 
-      {/* HOME */}
+      {/* HOME — 레벨 선택 (Stitch 3 디자인) */}
       {screen === "home" && !isConnecting && (
-        <div style={{ maxWidth: "460px", margin: "0 auto", animation: "fadeUp .5s ease" }}>
-          {/* Green header bar */}
-          <div style={{ background: "#58CC02", padding: "20px 16px 24px", position: "relative" }}>
-            <button onClick={onBack} style={{ background: "none", border: "none", color: "white", fontSize: "14px", cursor: "pointer", padding: "0 0 12px", display: "block", fontFamily: "inherit", fontWeight: "700", opacity: 0.9 }}>← 홈으로</button>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "48px", animation: "bounce 2s ease infinite", display: "inline-block" }}>📞</div>
-              <h1 style={{ fontSize: "22px", fontWeight: "900", margin: "8px 0 4px", color: "white", letterSpacing: "-.5px" }}>콜포비아 트레이너</h1>
-              <p style={{ fontSize: "13px", color: "rgba(255,255,255,.85)", margin: 0, lineHeight: "1.6", fontWeight: "600" }}>AI와 실전 전화 통화 연습</p>
-            </div>
-            {!sttSupported && (
-              <div style={{ marginTop: "12px", padding: "10px 14px", background: "rgba(255,255,255,.2)", borderRadius: "10px", color: "white", fontSize: "12px" }}>
-                ⚠️ 이 브라우저는 음성인식을 지원하지 않아요. Chrome을 사용해주세요.
-              </div>
-            )}
-          </div>
+        <div style={{ maxWidth: "460px", margin: "0 auto", background: "#f7f8f5", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
-          {/* Level path */}
-          <div style={{ padding: "24px 16px 60px" }}>
+          {/* ── 상단 헤더 ── */}
+          <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(247,248,245,0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(89,202,2,0.1)", padding: "12px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button onClick={onBack} style={{ width: "40px", height: "40px", borderRadius: "50%", background: "rgba(89,202,2,0.1)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <span className="msicon" style={{ fontSize: "22px", color: "#59ca02" }}>language</span>
+                </button>
+                <div>
+                  <div style={{ fontSize: "16px", fontWeight: "900", color: "#0f172a", lineHeight: 1, letterSpacing: "-0.3px" }}>Call Phobia</div>
+                  <div style={{ fontSize: "9px", fontWeight: "700", color: "#64748b", letterSpacing: "0.15em", textTransform: "uppercase" }}>Trainer</div>
+                </div>
+              </div>
+              {/* 스트릭 + XP */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "white", padding: "6px 14px", borderRadius: "9999px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ fontWeight: "900", fontSize: "14px", color: "#f97316" }}>7</span>
+                  <span className="msicon" style={{ fontSize: "18px", color: "#f97316" }}>local_fire_department</span>
+                </div>
+                <div style={{ width: "1px", height: "16px", background: "#e2e8f0" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                  <span style={{ fontWeight: "900", fontSize: "14px", color: "#59ca02" }}>420</span>
+                  <span className="msicon" style={{ fontSize: "18px", color: "#59ca02" }}>diamond</span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* ── STT 미지원 경고 ── */}
+          {!sttSupported && (
+            <div style={{ margin: "12px 16px 0", padding: "10px 14px", background: "rgba(255,149,0,0.1)", border: "1px solid rgba(255,149,0,0.3)", borderRadius: "12px", fontSize: "12px", color: "#92400e" }}>
+              ⚠️ 이 브라우저는 음성인식을 지원하지 않아요. Chrome을 사용해주세요.
+            </div>
+          )}
+
+          {/* ── 레벨 패스 ── */}
+          <main className="scrollbar-hide" style={{ flex: 1, overflowY: "auto", paddingBottom: "120px" }}>
             {(() => {
-              const zigzag = [0, 70, -70, 70, -70, 0];
-              let lastSection = null;
-              const items = [];
-              LEVELS.forEach((lv, i) => {
-                const section = lv.difficulty === 1 ? 1 : lv.difficulty === 2 ? 2 : 3;
-                if (section !== lastSection) {
-                  lastSection = section;
-                  const bannerColor = section === 1 ? "#1CB0F6" : section === 2 ? "#CE82FF" : "#FF9600";
-                  const bannerShadow = section === 1 ? "#009DC4" : section === 2 ? "#A855F7" : "#E07800";
-                  const bannerLabel = section === 1 ? "SECTION 1 · 입문" : section === 2 ? "SECTION 2 · 중급" : "SECTION 3 · 고급";
-                  items.push(
-                    <div key={`section-${section}`} style={{ background: bannerColor, borderRadius: "16px", padding: "14px 20px", marginBottom: "24px", boxShadow: `0 4px 0 ${bannerShadow}`, textAlign: "center" }}>
-                      <span style={{ color: "white", fontWeight: "800", fontSize: "15px", letterSpacing: "0.5px" }}>{bannerLabel}</span>
+              const sections = [
+                { num: 1, label: "Section 1", title: "Entry Level", sub: "입문 — 기본 통화 익히기", icon: "school", difficulties: [1] },
+                { num: 2, label: "Section 2", title: "Intermediate", sub: "초급 — 대화 이어가기", icon: "headphones", difficulties: [2] },
+                { num: 3, label: "Section 3", title: "Advanced", sub: "중·고급 — 까다로운 상황", icon: "trophy", difficulties: [3, 4] },
+              ];
+              const zigzag = [0, 64, -64, 64, -64, 0, 64, -64];
+
+              return sections.map((sec, si) => {
+                const secLevels = LEVELS.filter(lv => sec.difficulties.includes(lv.difficulty));
+                const isActive = si === 0;
+                const isLocked = si > 0;
+
+                return (
+                  <section key={sec.num} style={{ padding: "32px 16px 0", position: "relative" }}>
+                    {/* 섹션 배너 */}
+                    <div style={{
+                      borderRadius: "16px", padding: "20px 24px", marginBottom: "40px", position: "relative", overflow: "hidden",
+                      background: isActive ? "#59ca02" : "rgba(226,232,240,0.5)",
+                      boxShadow: isActive ? "0 8px 0 #46a302" : "0 8px 0 #d1d5db",
+                      filter: isLocked ? "grayscale(0.4)" : "none",
+                    }}>
+                      <div style={{ position: "relative", zIndex: 1 }}>
+                        <div style={{ fontSize: "10px", fontWeight: "900", letterSpacing: "0.2em", textTransform: "uppercase", color: isActive ? "rgba(255,255,255,0.8)" : "#94a3b8", marginBottom: "4px" }}>{sec.label}</div>
+                        <div style={{ fontSize: "22px", fontWeight: "900", color: isActive ? "white" : "#64748b", letterSpacing: "-0.3px" }}>{sec.title}</div>
+                        <div style={{ fontSize: "13px", fontWeight: "600", color: isActive ? "rgba(255,255,255,0.85)" : "#94a3b8", marginTop: "2px" }}>{sec.sub}</div>
+                      </div>
+                      <span className="msicon" style={{ position: "absolute", right: "-16px", bottom: "-16px", fontSize: "100px", color: isActive ? "rgba(255,255,255,0.2)" : "rgba(148,163,184,0.2)", transform: "rotate(12deg)" }}>{sec.icon}</span>
                     </div>
-                  );
-                }
-                const offset = zigzag[i % zigzag.length];
-                items.push(
-                  <div key={lv.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "20px", transform: `translateX(${offset}px)`, animation: `fadeUp .5s ease ${i * .08}s both` }}>
-                    <button
-                      className="duo-btn"
-                      onClick={() => startCall(lv)}
-                      style={{ width: "72px", height: "72px", borderRadius: "50%", border: "none", background: lv.color, borderBottom: `4px solid ${lv.darkColor}`, boxShadow: `0 4px 0 ${lv.darkColor}`, cursor: "pointer", fontSize: "28px", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s ease", fontFamily: "inherit" }}
-                    >{lv.emoji}</button>
-                    <div style={{ fontSize: "11px", fontWeight: "800", color: "#3C3C3C", marginTop: "8px", textAlign: "center", maxWidth: "80px" }}>{lv.title}</div>
-                    <div style={{ display: "flex", gap: "4px", marginTop: "5px" }}>
-                      {Array.from({ length: 4 }).map((_, j) => (
-                        <div key={j} style={{ width: "6px", height: "6px", borderRadius: "50%", background: j < lv.difficulty ? lv.color : "#E5E5E5" }} />
-                      ))}
+
+                    {/* 노드들 */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "48px", paddingBottom: "16px", position: "relative" }}>
+                      {/* 세로 연결선 */}
+                      <div style={{ position: "absolute", top: "40px", bottom: "40px", left: "50%", transform: "translateX(-50%)", width: "6px", background: isActive ? "#59ca02" : "#e2e8f0", borderRadius: "3px", zIndex: 0 }} />
+
+                      {secLevels.map((lv, i) => {
+                        const offset = zigzag[i % zigzag.length];
+                        const isFirst = i === 0 && si === 0;
+                        return (
+                          <div key={lv.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", transform: `translateX(${offset}px)`, position: "relative", zIndex: 1, animation: `fadeUp .5s ease ${(si * 5 + i) * .06}s both` }}>
+                            {/* START! 말풍선 — 첫 노드 */}
+                            {isFirst && (
+                              <div style={{ position: "absolute", top: "-44px", left: "50%", transform: "translateX(-50%)", background: "white", color: "#59ca02", fontWeight: "900", fontSize: "11px", letterSpacing: "0.15em", padding: "6px 14px", borderRadius: "10px", boxShadow: "0 4px 12px rgba(89,202,2,0.25)", border: "2px solid #59ca02", whiteSpace: "nowrap", animation: "bounce 1.5s ease infinite" }}>
+                                START!
+                                <div style={{ position: "absolute", bottom: "-8px", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderTop: "8px solid #59ca02" }} />
+                              </div>
+                            )}
+                            {/* 노드 버튼 */}
+                            <button
+                              className="duo-btn"
+                              onClick={() => startCall(lv)}
+                              style={{
+                                width: isFirst ? "88px" : "76px",
+                                height: isFirst ? "88px" : "76px",
+                                borderRadius: "50%", border: "none", cursor: "pointer", fontFamily: "inherit",
+                                background: isActive ? lv.color : "#e2e8f0",
+                                boxShadow: isActive ? `0 8px 0 ${lv.darkColor}` : "0 8px 0 #d1d5db",
+                                fontSize: isFirst ? "34px" : "28px",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                transition: "all .15s ease",
+                                outline: isFirst ? "4px solid rgba(89,202,2,0.2)" : "none",
+                                outlineOffset: "4px",
+                              }}
+                            >
+                              {isActive ? lv.emoji : <span className="msicon" style={{ fontSize: "28px", color: "#94a3b8" }}>lock</span>}
+                            </button>
+                            <div style={{ fontSize: "12px", fontWeight: "700", color: isActive ? "#0f172a" : "#94a3b8", marginTop: "10px", textAlign: "center", maxWidth: "88px", lineHeight: "1.3" }}>{lv.title}</div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Section 3: Final Challenge 트로피 */}
+                      {si === 2 && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", opacity: 0.4, zIndex: 1 }}>
+                          <div style={{ width: "112px", height: "112px", borderRadius: "50%", border: "4px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span className="msicon" style={{ fontSize: "60px", color: "#94a3b8" }}>trophy</span>
+                          </div>
+                          <div style={{ fontSize: "11px", fontWeight: "900", color: "#94a3b8", letterSpacing: "0.15em", textTransform: "uppercase" }}>Final Challenge</div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </section>
                 );
               });
-              return items;
             })()}
 
             {/* ── 직접 입력 카드 ── */}
-            {!showCustom ? (
-              <button
-                onClick={() => setShowCustom(true)}
-                style={{ width: "100%", background: "white", border: "2px dashed #E5E5E5", borderRadius: "20px", padding: "18px 20px", cursor: "pointer", textAlign: "left", color: "#3C3C3C", transition: "all .2s ease", animation: `fadeUp .5s ease ${LEVELS.length * .08}s both`, boxSizing: "border-box" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#F472B6"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E5E5"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ width: "52px", height: "52px", borderRadius: "16px", background: "rgba(244,114,182,.12)", border: "1px solid rgba(244,114,182,.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", flexShrink: 0 }}>✏️</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: "800", fontSize: "15px", marginBottom: "4px", color: "#3C3C3C" }}>직접 상황 입력</div>
-                    <div style={{ fontSize: "12px", color: "#AFAFAF" }}>내가 원하는 상황을 직접 만들어서 연습해요</div>
+            <div style={{ padding: "32px 16px 0" }}>
+              {!showCustom ? (
+                <button
+                  onClick={() => setShowCustom(true)}
+                  style={{ width: "100%", background: "white", border: "2px dashed rgba(89,202,2,0.35)", borderRadius: "18px", padding: "18px 20px", cursor: "pointer", textAlign: "left", color: "#0f172a", transition: "all .2s ease", boxSizing: "border-box", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#59ca02"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(89,202,2,0.35)"; e.currentTarget.style.transform = ""; }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "rgba(89,202,2,0.1)", border: "1px solid rgba(89,202,2,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", flexShrink: 0 }}>✏️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "700", fontSize: "15px", marginBottom: "3px" }}>직접 상황 입력</div>
+                      <div style={{ fontSize: "12px", color: "#94a3b8" }}>내가 원하는 상황을 직접 만들어서 연습해요</div>
+                    </div>
+                    <span style={{ fontSize: "22px", color: "#59ca02", fontWeight: "900" }}>+</span>
                   </div>
-                  <div style={{ fontSize: "20px", color: "#F472B6", fontWeight: "900" }}>+</div>
-                </div>
-              </button>
-            ) : (
-              <div style={{ background: "white", border: "2px solid #E5E5E5", borderRadius: "20px", padding: "20px", animation: "fadeUp .3s ease", boxShadow: "0 2px 12px rgba(0,0,0,.06)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "20px" }}>✏️</span>
-                    <span style={{ fontWeight: "800", fontSize: "15px", color: "#3C3C3C" }}>직접 상황 입력</span>
+                </button>
+              ) : (
+                <div style={{ background: "white", border: "2px solid rgba(89,202,2,0.2)", borderRadius: "18px", padding: "20px", animation: "fadeUp .3s ease", boxShadow: "0 2px 12px rgba(0,0,0,.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                    <span style={{ fontWeight: "700", fontSize: "15px", color: "#0f172a" }}>✏️ 직접 상황 입력</span>
+                    <button onClick={() => setShowCustom(false)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "22px", cursor: "pointer", lineHeight: 1 }}>×</button>
                   </div>
-                  <button onClick={() => setShowCustom(false)} style={{ background: "none", border: "none", color: "#AFAFAF", fontSize: "20px", cursor: "pointer", lineHeight: 1, fontWeight: "700" }}>×</button>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                  {/* 상황 이름 */}
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>상황 이름 *</label>
-                    <input
-                      value={customTitle}
-                      onChange={e => setCustomTitle(e.target.value)}
-                      placeholder="예: 치과 예약, 전기요금 문의"
-                      maxLength={20}
-                      style={{ width: "100%", background: "white", border: "2px solid #E5E5E5", borderRadius: "12px", padding: "12px 14px", color: "#3C3C3C", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-                      onFocus={e => e.target.style.borderColor = "#58CC02"}
-                      onBlur={e => e.target.style.borderColor = "#E5E5E5"}
-                    />
-                  </div>
-
-                  {/* 상대방 역할 */}
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>상대방 역할 *</label>
-                    <input
-                      value={customRole}
-                      onChange={e => setCustomRole(e.target.value)}
-                      placeholder="예: 치과 접수 직원, 전기회사 상담사"
-                      maxLength={30}
-                      style={{ width: "100%", background: "white", border: "2px solid #E5E5E5", borderRadius: "12px", padding: "12px 14px", color: "#3C3C3C", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-                      onFocus={e => e.target.style.borderColor = "#58CC02"}
-                      onBlur={e => e.target.style.borderColor = "#E5E5E5"}
-                    />
-                  </div>
-
-                  {/* 시나리오 */}
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>연습할 상황 설명 *</label>
-                    <textarea
-                      value={customScenario}
-                      onChange={e => setCustomScenario(e.target.value)}
-                      placeholder="예: 충치 치료 때문에 이번 주 진료 예약을 하려고 전화한다"
-                      maxLength={100}
-                      rows={3}
-                      style={{ width: "100%", background: "white", border: "2px solid #E5E5E5", borderRadius: "12px", padding: "12px 14px", color: "#3C3C3C", fontSize: "14px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", lineHeight: "1.6" }}
-                      onFocus={e => e.target.style.borderColor = "#58CC02"}
-                      onBlur={e => e.target.style.borderColor = "#E5E5E5"}
-                    />
-                    <div style={{ textAlign: "right", fontSize: "11px", color: "#AFAFAF", marginTop: "4px" }}>{customScenario.length}/100</div>
-                  </div>
-
-                  {/* 통화 방향 */}
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>나의 입장</label>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      {[
-                        { v: "calling", emoji: "📞", label: "전화 거는 입장", desc: "내가 먼저 전화함" },
-                        { v: "receiving", emoji: "📲", label: "전화 받는 입장", desc: "상대방이 먼저 전화함" },
-                      ].map(({ v, emoji, label, desc }) => (
-                        <button key={v} onClick={() => setCustomDirection(v)}
-                          style={{ flex: 1, padding: "10px 8px", borderRadius: "12px", border: "2px solid", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease", textAlign: "center",
-                            borderColor: customDirection === v ? "#F472B6" : "#E5E5E5",
-                            background: customDirection === v ? "rgba(244,114,182,.08)" : "white",
-                          }}
-                        >
-                          <div style={{ fontSize: "18px", marginBottom: "4px" }}>{emoji}</div>
-                          <div style={{ fontSize: "11px", fontWeight: "800", color: customDirection === v ? "#F472B6" : "#3C3C3C" }}>{label}</div>
-                          <div style={{ fontSize: "10px", color: customDirection === v ? "#F472B6" : "#AFAFAF", marginTop: "2px" }}>{desc}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {[
+                      { label: "상황 이름 *", val: customTitle, set: setCustomTitle, ph: "예: 치과 예약, 전기요금 문의", max: 20 },
+                      { label: "상대방 역할 *", val: customRole, set: setCustomRole, ph: "예: 치과 접수 직원, 전기회사 상담사", max: 30 },
+                    ].map(({ label, val, set, ph, max }) => (
+                      <div key={label}>
+                        <label style={{ fontSize: "11px", color: "#59ca02", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>{label}</label>
+                        <input value={val} onChange={e => set(e.target.value)} placeholder={ph} maxLength={max}
+                          style={{ width: "100%", background: "white", border: "2px solid #e2e8f0", borderRadius: "12px", padding: "12px 14px", color: "#0f172a", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                          onFocus={e => e.target.style.borderColor = "#59ca02"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+                      </div>
+                    ))}
+                    <div>
+                      <label style={{ fontSize: "11px", color: "#59ca02", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>연습할 상황 설명 *</label>
+                      <textarea value={customScenario} onChange={e => setCustomScenario(e.target.value)}
+                        placeholder="예: 충치 치료 때문에 이번 주 진료 예약을 하려고 전화한다"
+                        maxLength={100} rows={3}
+                        style={{ width: "100%", background: "white", border: "2px solid #e2e8f0", borderRadius: "12px", padding: "12px 14px", color: "#0f172a", fontSize: "14px", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", lineHeight: "1.6" }}
+                        onFocus={e => e.target.style.borderColor = "#59ca02"} onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
+                      <div style={{ textAlign: "right", fontSize: "11px", color: "#94a3b8", marginTop: "4px" }}>{customScenario.length}/100</div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11px", color: "#59ca02", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>나의 입장</label>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        {[{ v: "calling", emoji: "📞", label: "전화 거는 입장", desc: "내가 먼저 전화함" }, { v: "receiving", emoji: "📲", label: "전화 받는 입장", desc: "상대방이 먼저 전화함" }].map(({ v, emoji, label, desc }) => (
+                          <button key={v} onClick={() => setCustomDirection(v)} style={{ flex: 1, padding: "10px 8px", borderRadius: "12px", border: "2px solid", cursor: "pointer", fontFamily: "inherit", transition: "all .15s", textAlign: "center", borderColor: customDirection === v ? "#59ca02" : "#e2e8f0", background: customDirection === v ? "rgba(89,202,2,0.07)" : "white" }}>
+                            <div style={{ fontSize: "18px", marginBottom: "4px" }}>{emoji}</div>
+                            <div style={{ fontSize: "11px", fontWeight: "700", color: customDirection === v ? "#59ca02" : "#0f172a" }}>{label}</div>
+                            <div style={{ fontSize: "10px", color: customDirection === v ? "#59ca02" : "#94a3b8", marginTop: "2px" }}>{desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11px", color: "#59ca02", fontWeight: "700", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>난이도</label>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        {[{ v: 1, label: "Lv.1" }, { v: 2, label: "Lv.2" }, { v: 3, label: "Lv.3" }, { v: 4, label: "Lv.4" }].map(({ v, label }) => (
+                          <button key={v} onClick={() => setCustomDifficulty(v)} style={{ flex: 1, padding: "8px 4px", borderRadius: "10px", border: "2px solid", fontSize: "12px", fontWeight: "700", cursor: "pointer", fontFamily: "inherit", transition: "all .15s", borderColor: customDifficulty === v ? "#59ca02" : "#e2e8f0", background: customDifficulty === v ? "rgba(89,202,2,0.07)" : "white", color: customDifficulty === v ? "#59ca02" : "#94a3b8" }}>{label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    {(() => {
+                      const disabled = !customTitle.trim() || !customRole.trim() || !customScenario.trim();
+                      return (
+                        <button className="duo-btn" onClick={startCustomCall} disabled={disabled}
+                          style={{ padding: "14px", borderRadius: "9999px", border: "none", fontFamily: "inherit", background: disabled ? "#e2e8f0" : "#59ca02", color: disabled ? "#94a3b8" : "white", fontSize: "15px", fontWeight: "700", cursor: disabled ? "not-allowed" : "pointer", boxShadow: disabled ? "none" : "0 4px 0 #46a302", transition: "all .2s" }}>
+                          📞 이 상황으로 통화 연습 시작
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })()}
                   </div>
-
-                  {/* 난이도 */}
-                  <div>
-                    <label style={{ fontSize: "11px", color: "#F472B6", fontWeight: "800", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>난이도</label>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      {[
-                        { v: 1, label: "Lv.1 입문" },
-                        { v: 2, label: "Lv.2 초급" },
-                        { v: 3, label: "Lv.3 중급" },
-                        { v: 4, label: "Lv.4 고급" },
-                      ].map(({ v, label }) => (
-                        <button key={v} onClick={() => setCustomDifficulty(v)}
-                          style={{ flex: 1, padding: "8px 4px", borderRadius: "10px", border: "2px solid", fontSize: "11px", fontWeight: "800", cursor: "pointer", fontFamily: "inherit", transition: "all .15s ease",
-                            borderColor: customDifficulty === v ? "#F472B6" : "#E5E5E5",
-                            background: customDifficulty === v ? "rgba(244,114,182,.08)" : "white",
-                            color: customDifficulty === v ? "#F472B6" : "#AFAFAF",
-                          }}
-                        >{label}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 시작 버튼 */}
-                  {(() => {
-                    const disabled = !customTitle.trim() || !customRole.trim() || !customScenario.trim();
-                    return (
-                      <button
-                        className="duo-btn"
-                        onClick={startCustomCall}
-                        disabled={disabled}
-                        style={{ padding: "15px", borderRadius: "16px", border: "none", fontFamily: "inherit",
-                          background: disabled ? "#E5E5E5" : "#58CC02",
-                          color: disabled ? "#AFAFAF" : "white",
-                          fontSize: "15px", fontWeight: "800", cursor: disabled ? "not-allowed" : "pointer",
-                          boxShadow: disabled ? "none" : "0 4px 0 #46A302",
-                          transition: "all .2s ease",
-                        }}
-                      >
-                        📞 이 상황으로 통화 연습 시작
-                      </button>
-                    );
-                  })()}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </main>
+
+          {/* ── 하단 네비 ── */}
+          <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "white", borderTop: "2px solid #f1f5f9", padding: "8px 0 max(20px, env(safe-area-inset-bottom))", zIndex: 50 }}>
+            <div style={{ maxWidth: "460px", margin: "0 auto", display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+              {[
+                { icon: "home", label: "Learn", active: true },
+                { icon: "headphones", label: "Practice", active: false },
+                { icon: "leaderboard", label: "Leagues", active: false },
+                { icon: "person", label: "Profile", active: false },
+              ].map(item => (
+                <button key={item.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "3px", background: "none", border: "none", cursor: "pointer", padding: "4px 12px", fontFamily: "inherit" }}>
+                  <div style={{ padding: item.active ? "8px" : "8px", borderRadius: "14px", background: item.active ? "rgba(89,202,2,0.1)" : "transparent" }}>
+                    <span className="msicon" style={{ fontSize: "26px", color: item.active ? "#59ca02" : "#94a3b8" }}>{item.icon}</span>
+                  </div>
+                  <span style={{ fontSize: "9px", fontWeight: "900", letterSpacing: "0.1em", textTransform: "uppercase", color: item.active ? "#59ca02" : "#94a3b8" }}>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
         </div>
       )}
 
